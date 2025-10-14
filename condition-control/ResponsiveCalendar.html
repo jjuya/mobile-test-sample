@@ -1,0 +1,1277 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>달력 입력창 컴포넌트</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* (기존 CSS 코드 유지) */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #5c6470;
+            display: flex;
+            justify-content: center;
+            align-items: center; 
+            min-height: 100vh;
+            padding: 1rem;
+            flex-direction: column; 
+        }
+
+        .view-controls {
+            margin-bottom: 1.5rem;
+            display: flex;
+            gap: 1rem;
+        }
+
+        .phone-frame {
+            position: relative;
+            width: 375px; /* 모바일 뷰 기본 */
+            height: 667px;
+            background-color: #fff;
+            border-radius: 8px;
+            border: 1px solid #5c6470;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease-in-out;
+        }
+
+        .tablet-view .phone-frame {
+            width: 768px; /* 태블릿 뷰 너비 */
+            height: 667px; 
+        }
+        
+        .phone-content {
+            padding: 1.5rem;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        /* Mobile Slide-up Popup Styles */
+        .mobile-popup-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease-in-out;
+            z-index: 1000;
+        }
+        .mobile-popup-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .mobile-popup-content {
+            position: relative;
+            width: 100%;
+            background-color: #fff;
+            border-top-left-radius: 1rem;
+            border-top-right-radius: 1rem;
+            box-shadow: 0 -10px 20px rgba(0, 0, 0, 0.1);
+            transform: translateY(100%);
+            transition: transform 0.3s ease-in-out;
+            overflow: hidden;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .mobile-popup-overlay.show .mobile-popup-content {
+            transform: translateY(0);
+        }
+        /* 2단 달력 레이아웃을 위한 스타일 (태블릿 뷰에서 사용) */
+        .calendar-multi-view {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            padding: 1rem;
+            overflow-y: auto; 
+        }
+        .calendar-container {
+            border-radius: 0.5rem;
+            display: flex;
+            flex-direction: column;
+        }
+        /* 기존 싱글 달력 스타일 */
+        .calendar-single-view {
+            padding: 0 1rem;
+        }
+        /* Simplified View Range Styles */
+        .simplified-options .selected {
+            background-color: #3b82f6;
+            color: #fff;
+            font-weight: bold;
+        }
+        .simplified-options .selected-range {
+            background-color: #93c5fd;
+            color: #fff;
+            border-radius: 0;
+        }
+        .simplified-options .start-of-range {
+            background: #66A3FF !important;
+            border: 1px solid #0066FF !important;
+            border-top-left-radius: 0.5rem;
+            border-bottom-left-radius: 0.5rem;
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
+            color: #fff !important;
+            font-weight: bold;
+        }
+        .simplified-options .end-of-range {
+            background: #0066FF !important;
+            border: 1px solid #0066FF !important;
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
+            border-top-right-radius: 0.5rem;
+            border-bottom-right-radius: 0.5rem;
+            color: #fff !important;
+            font-weight: bold;
+        }
+        .simplified-options .single-day-range {
+            border-radius: 0.5rem;
+        }
+        .calendar-input-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
+        .input-trigger {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 2.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            background-color: #fff;
+            transition: border-color 0.2s;
+            outline: none;
+            text-align: left;
+        }
+        
+        .input-trigger.active, .input-trigger:focus {
+            border-color: #3b82f6;
+        }
+
+        .calendar-icon {
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6b7280;
+        }
+        
+        .clear-icon {
+            position: absolute;
+            right: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6b7280;
+            cursor: pointer;
+            display: none;
+        }
+
+        /* Calendar grid and styles */
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+            font-weight: bold;
+            color: #374151;
+        }
+        
+        .calendar-weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            text-align: center;
+            font-size: 0.875rem;
+            color: #6b7280;
+            padding: 0.5rem 0;
+        }
+        
+        .calendar-weekdays.with-week-numbers {
+            grid-template-columns: 1fr repeat(7, 1fr);
+        }
+        
+        .calendar-weekdays .week-column {
+            color: #374151;
+            font-weight: 600;
+        }
+        
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            text-align: center;
+            padding-bottom: 1rem;
+        }
+        
+        .calendar-grid.with-week-numbers {
+            grid-template-columns: 1fr repeat(7, 1fr);
+        }
+
+        .calendar-day, .calendar-week-number {
+            padding: 0.75rem 0.5rem;
+            cursor: pointer;
+            border-radius: 50%;
+            transition: background-color 0.2s;
+            position: relative;
+        }
+
+        .calendar-day:hover:not(.empty-day):not(.selected-range),
+        .calendar-week-number:hover {
+            background-color: #e5e7eb;
+        }
+        
+        .empty-day {
+            visibility: hidden;
+        }
+        
+        .outside-month {
+            color: #d1d5db;
+        }
+
+        .selected {
+            background-color: #3b82f6;
+            border: 1px solid #3b82f6;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .selected-range {
+            background-color: #E6F0FF;
+            color: #003D99;
+            border-radius: 0;
+        }
+        
+        /* Week number specific styling */
+        .calendar-week-number {
+            font-weight: 600;
+        }
+
+        .selected-week {
+            background-color: #dbeafe;
+            border-radius: 0; 
+            color: #1e40af; 
+        }
+
+        /* WeekFromTo 범위 시작/끝 스타일: 날짜 셀 대신 주차 번호에만 적용되도록 유지 */
+        .calendar-week-number.start-week-of-range {
+            background: #66A3FF !important;;
+            border: 1px solid #0066FF !important;
+            border-top-left-radius: 50%; 
+            border-top-right-radius: 50%; 
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+            color: #fff !important;
+            font-weight: bold;
+        }
+        
+        .calendar-week-number.end-week-of-range {
+            background: #0066FF !important;
+            border: 1px solid #0066FF !important;
+            border-top-left-radius: 0; 
+            border-top-right-radius: 0; 
+            border-bottom-left-radius: 50%;
+            border-bottom-right-radius: 50%;
+            color: #fff !important;
+            font-weight: bold;
+        }
+
+        .calendar-week-number.single-day-range {
+            background: #0066FF;
+            border: 1px solid #0066FF;
+            border-radius: 50%;
+            color: #fff;
+            font-weight: bold;
+        }
+        
+        /* Week selection styling */
+        /* Week 타입일 때 날짜 셀에 스타일이 적용되지 않도록 CSS 제거 (JS에서 제어됨) */
+        .week-range .calendar-day {
+            border-radius: 50%; /* 기존 day 스타일 유지 */
+        }
+
+        /* [복구/유지] DayFromTo 범위 시작/끝 스타일: 날짜 셀에만 적용되도록 유지 */
+        .day-fromto-range .calendar-day.start-of-range {
+            background: #66A3FF !important;
+            border: 1px solid #0066FF !important;
+            border-top-left-radius: 50%; 
+            border-bottom-left-radius: 50%; 
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
+            color: #fff !important;
+        }
+
+        .day-fromto-range .calendar-day.end-of-range {
+            background: #0066FF !important;
+            border: 1px solid #0066FF !important;
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
+            border-top-right-radius: 50%; 
+            border-bottom-right-radius: 50%; 
+            color: #fff !important;
+        }
+        
+        .day-fromto-range .calendar-day.single-day-range {
+            border-radius: 50%;
+        }
+
+        .action-buttons {
+            display: flex;
+            border-top: 1px solid #e5e7eb;
+            padding: 1rem;
+            gap: 0.5rem;
+        }
+
+        .action-button {
+            flex-grow: 1;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: background-color 0.2s;
+            cursor: pointer;
+        }
+
+        .action-button.confirm {
+            background-color: #3b82f6;
+            color: #fff;
+        }
+
+        .action-button.confirm:hover {
+            background-color: #2563eb;
+        }
+        /* Simplified view styles */
+        .simplified-option {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            border-radius: 0.5rem;
+            transition: background-color 0.2s;
+            text-align: center;
+        }
+        
+        .simplified-option:hover {
+            background-color: #f3f4f6;
+        }
+
+        /* 현재 날짜/기간 표시 스타일 */
+        .today-mark {
+            border: 1px solid #8AEFFF; 
+            border-radius: 50%;
+            background-color: #E2FBFF !important;
+            color: #1f2937 !important;
+            font-weight: 600;
+        }
+
+        .today-mark.selected {
+            border-radius: 0; 
+        }
+
+        /* [수정 적용] Week 모드에서는 날짜 셀에 현재 주차 표시도 하지 않음 (JS에서 current-week-mark 클래스 제거 필요) */
+        .current-week-mark {
+             /* 스타일은 유지하되, JS에서 Week 타입일 때 calendar-day에는 이 클래스를 추가하지 않도록 수정 */
+            border: 1px solid #8AEFFF; 
+            border-radius: 50%;
+            background-color: #E2FBFF;
+            color: #003D99;
+        }
+
+        .current-week-mark.selected-week {
+            border-radius: 0;
+        }
+
+        .simplified-option.current-mark {
+            border: 1px solid #8AEFFF; 
+            background-color: #E2FBFF;
+            color: #003D99;
+        }
+
+        .simplified-option.current-mark.selected {
+            background-color: #E2FBFF;
+            color: #003D99;
+            border-color: #8AEFFF;
+        }
+    </style>
+</head>
+<body id="appBody" class="mobile-view"> 
+    <div class="view-controls">
+        <button id="mobileViewButton" class="px-4 py-2 rounded-md font-semibold text-white bg-blue-500 hover:bg-blue-600">
+            모바일 뷰 (375px)
+        </button>
+        <button id="tabletViewButton" class="px-4 py-2 rounded-md font-semibold text-gray-700 bg-gray-200 hover:bg-gray-300">
+            태블릿 뷰 (768px)
+        </button>
+    </div>
+
+    <div class="phone-frame" id="phoneFrame">
+        <div class="phone-content">
+            <h1 class="text-xl font-bold text-center text-gray-800">모바일 달력 입력창</h1>
+            <p class="text-sm text-center text-gray-500 mt-2">아래 입력창을 터치하여 슬라이드업 팝업을 확인하세요.</p>
+            
+            <div class="w-full">
+                <label for="calendarType" class="block text-sm font-medium text-gray-700 mb-2">달력 타입 선택</label>
+                <select id="calendarType" class="w-full p-2 border border-gray-300 rounded-md">
+                    <option value="day">Day (단일)</option>
+                    <option value="dayFromTo">Day FromTo (기간)</option>
+                    <option value="week">Week (단일)</option>
+                    <option value="weekFromTo">Week FromTo (기간)</option>
+                    <option value="month">Month (단일)</option>
+                    <option value="monthFromTo">Month FromTo (기간)</option>
+                    <option value="year">Year (단일)</option>
+                    <option value="yearFromTo">Year FromTo (기간)</option>
+                </select>
+            </div>
+
+            <div class="calendar-input-wrapper">
+                <div class="relative">
+                    <input type="text" id="calendarInput" class="input-trigger" placeholder="날짜를 선택하세요" readonly>
+                    <svg class="calendar-icon w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    <svg class="clear-icon w-5 h-5 hidden" id="clearButton" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </div>
+            </div>
+        </div>
+
+        <div class="mobile-popup-overlay" id="calendarPopupOverlay">
+            <div class="mobile-popup-content">
+                <div id="calendarPopup" class="flex-grow overflow-y-auto">
+                    </div>
+                <div class="action-buttons">
+                    <button id="confirmButton" class="action-button confirm">확인</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const appBody = document.getElementById('appBody');
+            const calendarTypeSelect = document.getElementById('calendarType');
+            const calendarInput = document.getElementById('calendarInput');
+            const calendarPopupOverlay = document.getElementById('calendarPopupOverlay');
+            const calendarPopup = document.getElementById('calendarPopup');
+            const clearButton = document.getElementById('clearButton');
+            const confirmButton = document.getElementById('confirmButton');
+            const phoneFrame = document.getElementById('phoneFrame');
+            const mobileButton = document.getElementById('mobileViewButton');
+            const tabletButton = document.getElementById('tabletViewButton');
+
+            let selectedDates = [];
+            let displayDateLeft = new Date();
+            let displayDateRight = null;
+            let currentView = 'calendar'; // 'calendar', 'month', 'year'
+            let tempSelectedDates = []; // 임시 선택 날짜/범위 (Date 객체만 저장)
+            let currentFrameView = 'mobile';
+            
+            // 유틸리티 함수
+            const getTodayDate = () => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                return today;
+            }
+
+            const isToday = (date) => {
+                const today = getTodayDate();
+                return date.getTime() === today.getTime();
+            };
+            
+            // 날짜 포맷 함수
+            const formatDate = (date) => {
+                const y = date.getFullYear();
+                const m = String(date.getMonth() + 1).padStart(2, '0');
+                const d = String(date.getDate()).padStart(2, '0');
+                return `${y}.${m}.${d}`;
+            };
+
+            // 주차 포맷 함수
+            const formatWeekRange = (startWeekDate, endWeekDate) => {
+                // WeekFromTo에서는 선택된 두 날짜가 주차의 시작일이 아닐 수 있으므로, 실제 주차 범위를 찾아 포맷팅
+                const start = getISOWeekRange(startWeekDate).start;
+                const end = getISOWeekRange(endWeekDate).end;
+                return `${formatDate(start)} ~ ${formatDate(end)}`;
+            };
+
+            const formatMonthRange = (startDate, endDate) => {
+                const startMonth = String(startDate.getMonth() + 1).padStart(2, '0');
+                const endMonth = String(endDate.getMonth() + 1).padStart(2, '0');
+                if (startDate.getFullYear() === endDate.getFullYear()) {
+                    return `${startDate.getFullYear()}.${startMonth} ~ ${endMonth}`;
+                }
+                return `${startDate.getFullYear()}.${startMonth} ~ ${endDate.getFullYear()}.${endMonth}`;
+            };
+            
+            const formatYearRange = (startDate, endDate) => {
+                return `${startDate.getFullYear()}년 ~ ${endDate.getFullYear()}년`;
+            };
+
+            // 입력창 값 업데이트
+            const updateInputValue = () => {
+                clearButton.style.display = 'none';
+                if (selectedDates.length === 0) {
+                    calendarInput.value = '';
+                    calendarInput.placeholder = '날짜를 선택하세요';
+                    return;
+                }
+
+                clearButton.style.display = 'block';
+                const type = calendarTypeSelect.value;
+                const sortedDates = [...selectedDates].sort((a, b) => a.getTime() - b.getTime());
+
+                if (type === 'day') {
+                    calendarInput.value = formatDate(sortedDates[0]);
+                } else if (type === 'dayFromTo') {
+                    const start = sortedDates[0];
+                    const end = sortedDates.length > 1 ? sortedDates[1] : start;
+                    calendarInput.value = `${formatDate(start)} ~ ${formatDate(end)}`;
+                } else if (type === 'week') {
+                    // 단일 주 선택: 선택된 날짜의 ISO 주차 범위로 포맷
+                    const { start, end } = getISOWeekRange(sortedDates[0]);
+                    calendarInput.value = formatWeekRange(start, end);
+                } else if (type === 'weekFromTo') {
+                    // 주 기간 선택: 시작 주와 끝 주차의 범위로 포맷
+                    const start = sortedDates[0];
+                    const end = sortedDates.length > 1 ? sortedDates[1] : start;
+                    calendarInput.value = formatWeekRange(start, end);
+                } else if (type === 'month') {
+                    calendarInput.value = `${sortedDates[0].getFullYear()}.${String(sortedDates[0].getMonth() + 1).padStart(2, '0')}`;
+                } else if (type === 'monthFromTo') {
+                    const start = sortedDates[0];
+                    const end = sortedDates.length > 1 ? sortedDates[1] : start;
+                    calendarInput.value = formatMonthRange(start, end);
+                } else if (type === 'year') {
+                    calendarInput.value = `${sortedDates[0].getFullYear()}년`;
+                } else if (type === 'yearFromTo') {
+                    const start = sortedDates[0];
+                    const end = sortedDates.length > 1 ? sortedDates[1] : start;
+                    calendarInput.value = formatYearRange(start, end);
+                }
+            };
+            
+            // ISO Week (월요일 시작) 범위 반환
+            const getISOWeekRange = (date) => {
+                const day = (date.getDay() + 6) % 7; // Monday = 0, Sunday = 6
+                const startOfWeek = new Date(date);
+                startOfWeek.setDate(date.getDate() - day);
+                startOfWeek.setHours(0,0,0,0);
+
+                const endOfWeek = new Date(startOfWeek);
+                endOfWeek.setDate(startOfWeek.getDate() + 6);
+                endOfWeek.setHours(0,0,0,0);
+                return { start: startOfWeek, end: endOfWeek };
+            };
+
+            const isInCurrentWeek = (date) => {
+                const today = getTodayDate();
+                const { start: currentWeekStart, end: currentWeekEnd } = getISOWeekRange(today);
+                return date.getTime() >= currentWeekStart.getTime() && date.getTime() <= currentWeekEnd.getTime();
+            };
+
+            // ISO 8601 주차 계산 (월요일 시작) - 렌더링에 사용
+            const getWeekOfYear = (date) => {
+                const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+                const dayNum = d.getUTCDay() || 7; 
+                d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+                const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+                return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+            };
+
+            const initializeDisplayDates = () => {
+                const type = calendarTypeSelect.value;
+                const isFromToType = type.endsWith('FromTo');
+                const isTabletView = currentFrameView === 'tablet';
+
+                displayDateLeft = getTodayDate();
+                displayDateLeft.setDate(1); 
+                displayDateLeft.setHours(0, 0, 0, 0);
+
+                let baseDate = getTodayDate(); // 기본 기준일은 오늘 날짜
+
+                if (selectedDates.length > 0) {
+                    baseDate = selectedDates[0]; // 선택된 날짜가 있다면, 선택된 날짜를 기준일로 사용
+                }
+
+                if (type.includes('day') || type.includes('week')) {
+                    displayDateLeft = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1);
+                    currentView = 'calendar';
+                } else if (type.includes('month')) {
+                    displayDateLeft = new Date(baseDate.getFullYear(), 0, 1);
+                    currentView = 'month';
+                } else if (type.includes('year')) {
+                    currentView = 'year';
+                    // 선택된 날짜(baseDate)의 연도를 기준으로 6년 전을 시작 연도로 설정
+                    const startYear = baseDate.getFullYear() - 6;
+                    displayDateLeft = new Date(startYear, 0, 1);
+                } else {
+                    currentView = 'calendar'; // 기본값
+                }
+
+                // 태블릿 뷰에서 FromTo 타입일 경우 멀티 뷰 설정 (Month, Year 포함)
+                if (isTabletView && isFromToType) {
+                    displayDateRight = new Date(displayDateLeft);
+                    
+                    if (currentView === 'calendar') { // Day/Week FromTo
+                        displayDateRight.setMonth(displayDateRight.getMonth() + 1);
+                    } else if (currentView === 'month') { // Month FromTo
+                        displayDateRight.setFullYear(displayDateRight.getFullYear() + 1); 
+                    } else if (currentView === 'year') { // Year FromTo
+                        displayDateRight.setFullYear(displayDateRight.getFullYear() + 12); 
+                    }
+                    displayDateRight.setHours(0, 0, 0, 0);
+                } else {
+                    displayDateRight = null;
+                }
+            };
+
+            const setView = (view) => {
+                if (view === 'tablet') {
+                    appBody.classList.remove('mobile-view');
+                    appBody.classList.add('tablet-view');
+                    
+                    // 버튼 스타일 업데이트
+                    tabletButton.classList.replace('bg-gray-200', 'bg-blue-500');
+                    tabletButton.classList.replace('text-gray-700', 'text-white');
+                    mobileButton.classList.replace('bg-blue-500', 'bg-gray-200');
+                    mobileButton.classList.replace('text-white', 'text-gray-700');
+                    
+                    currentFrameView = 'tablet';
+                } else { // mobile
+                    appBody.classList.remove('tablet-view');
+                    appBody.classList.add('mobile-view');
+                    
+                    // 버튼 스타일 업데이트
+                    mobileButton.classList.replace('bg-gray-200', 'bg-blue-500');
+                    mobileButton.classList.replace('text-gray-700', 'text-white');
+                    tabletButton.classList.replace('bg-blue-500', 'bg-gray-200');
+                    tabletButton.classList.replace('text-white', 'text-gray-700');
+
+                    currentFrameView = 'mobile';
+                }
+                
+                // 뷰 전환 시 팝업이 열려 있었다면 닫기
+                if (calendarPopupOverlay.classList.contains('show')) {
+                    calendarPopupOverlay.classList.remove('show');
+                }
+            };
+
+            const showPopup = () => {
+                tempSelectedDates = [...selectedDates];
+                initializeDisplayDates();
+                calendarInput.classList.add('active');
+                calendarPopupOverlay.classList.add('show');
+                renderCalendar();
+            };
+
+            const hidePopup = () => {
+                calendarInput.classList.remove('active');
+                calendarPopupOverlay.classList.remove('show');
+            };
+
+            // 선택된 날짜인지 (혹은 범위 안에 포함되는지) 확인하는 핵심 로직
+            const isDaySelected = (dayDate) => {
+                const type = calendarTypeSelect.value;
+                dayDate.setHours(0, 0, 0, 0);
+                const selection = [...tempSelectedDates].sort((a, b) => a.getTime() - b.getTime());
+
+                if (selection.length === 0) return { isSelected: false };
+
+                // [수정 적용] Week/WeekFromTo 타입인 경우, 날짜 셀(calendar-day)에는 선택 표시를 하지 않음
+                if (type.includes('week')) {
+                    return { isSelected: false }; 
+                }
+
+                if (type.startsWith('day')) {
+                    const start = selection[0];
+                    const end = selection.length > 1 ? selection[1] : start;
+
+                    const isStart = dayDate.getTime() === start.getTime();
+                    const isEnd = dayDate.getTime() === end.getTime();
+                    const isInRange = dayDate.getTime() > start.getTime() && dayDate.getTime() < end.getTime();
+
+                    return { 
+                        isSelected: isStart || isEnd || isInRange, 
+                        isStart: isStart, 
+                        isEnd: isEnd, 
+                        isInRange: isInRange 
+                    };
+                }
+                
+                return { isSelected: false };
+            };
+            
+            // 주차 번호 선택 여부 확인
+            const isWeekSelected = (weekStartDate) => {
+                const type = calendarTypeSelect.value;
+                const selection = [...tempSelectedDates].sort((a, b) => a.getTime() - b.getTime());
+                
+                if (selection.length === 0 || !type.includes('week')) return { isSelected: false };
+                
+                // 선택된 날짜가 속한 주차의 시작일 (월요일)
+                const startSelectedWeekStart = getISOWeekRange(selection[0]).start;
+                const endSelectedWeekStart = getISOWeekRange(selection[selection.length - 1]).start;
+                
+                const isStart = weekStartDate.getTime() === startSelectedWeekStart.getTime();
+                const isEnd = weekStartDate.getTime() === endSelectedWeekStart.getTime();
+                const isInRange = weekStartDate.getTime() > startSelectedWeekStart.getTime() && weekStartDate.getTime() < endSelectedWeekStart.getTime();
+
+                return {
+                    isSelected: isStart || isEnd || isInRange,
+                    isStart: isStart,
+                    isEnd: isEnd,
+                    isInRange: isInRange
+                };
+            };
+
+
+            // 월/연도 선택 여부 확인
+            const isMonthOrYearSelected = (targetDate, selectionType) => {
+                const selection = [...tempSelectedDates].sort((a, b) => a.getTime() - b.getTime());
+                if (selection.length === 0) return { isSelected: false };
+
+                if (selectionType === 'month') {
+                    const startMonth = new Date(selection[0].getFullYear(), selection[0].getMonth(), 1);
+                    const endMonth = selection.length > 1 ? new Date(selection[1].getFullYear(), selection[1].getMonth(), 1) : startMonth;
+                    const checkMonth = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
+                    
+                    const isStart = checkMonth.getTime() === startMonth.getTime();
+                    const isEnd = checkMonth.getTime() === endMonth.getTime();
+                    const isInRange = checkMonth.getTime() > startMonth.getTime() && checkMonth.getTime() < endMonth.getTime();
+
+                    return {
+                        isSelected: isStart || isEnd || isInRange,
+                        isStart: isStart,
+                        isEnd: isEnd,
+                        isInRange: isInRange
+                    };
+                } else if (selectionType === 'year') {
+                    const startYear = selection[0].getFullYear();
+                    const endYear = selection.length > 1 ? selection[1].getFullYear() : startYear;
+                    const checkYear = targetDate.getFullYear();
+
+                    const isStart = checkYear === startYear;
+                    const isEnd = checkYear === endYear;
+                    const isInRange = checkYear > startYear && checkYear < endYear;
+
+                    return {
+                        isSelected: isStart || isEnd || isInRange,
+                        isStart: isStart,
+                        isEnd: isEnd,
+                        isInRange: isInRange
+                    };
+                }
+                return { isSelected: false };
+            };
+
+
+            const renderMonthView = (targetDate, container, isRightCalendar = false) => {
+                const year = targetDate.getFullYear();
+                
+                const wrapper = document.createElement('div');
+                wrapper.className = isRightCalendar ? 'calendar-container right' : 'calendar-container left';
+
+                let html = `<div class="simplified-options">`;
+                html += `<div class="calendar-header border-none">
+                            <button onclick="navigateMonthYear(${year - 1}, 0, 'month', ${isRightCalendar})" class="text-gray-500 hover:bg-gray-100 p-2 rounded-full">&lt;</button>
+                            <span class="text-lg font-bold">${year}년</span>
+                            <button onclick="navigateMonthYear(${year + 1}, 0, 'month', ${isRightCalendar})" class="text-gray-500 hover:bg-gray-100 p-2 rounded-full">&gt;</button>
+                        </div>`;
+                
+                html += `<div class="grid grid-cols-3 gap-y-1 gap-x-0 p-4">`;
+
+                for (let i = 0; i < 12; i++) {
+                    const monthDate = new Date(year, i, 1);
+                    const { isSelected, isStart, isEnd, isInRange } = isMonthOrYearSelected(monthDate, 'month');
+                    const isCurrentMonth = monthDate.getFullYear() === getTodayDate().getFullYear() && monthDate.getMonth() === getTodayDate().getMonth();
+                    
+                    let classes = 'simplified-option';
+                    if (isSelected) {
+                        if (isStart && isEnd) { 
+                            classes += ' selected single-day-range'; 
+                        } else if (isStart) {
+                            classes += ' start-of-range';
+                        } else if (isEnd) {
+                            classes += ' end-of-range';
+                        } else if (isInRange) {
+                            classes += ' selected-range';
+                        } else {
+                            classes += ' selected';
+                        }
+                    }
+                    if (!isSelected && isCurrentMonth) {
+                        classes += ' current-mark';
+                    }
+
+                    html += `<div class="${classes}" data-month="${i}" data-view="month">${i + 1}월</div>`;
+                }
+
+                html += `</div></div>`;
+                
+                wrapper.innerHTML = html;
+                container.appendChild(wrapper);
+            };
+
+            const renderYearView = (targetDate, container, isRightCalendar = false) => {
+                // targetDate는 이미 initializeDisplayDates에서 계산된 12년 범위의 시작 연도(예: 2020년 기준 2014년)를 담고 있습니다.
+                const startYear = targetDate.getFullYear();
+                const endYear = startYear + 11; // 총 12년 범위: startYear + 0 ~ startYear + 11
+
+                const wrapper = document.createElement('div');
+                wrapper.className = isRightCalendar ? 'calendar-container right' : 'calendar-container left';
+
+                let html = `<div class="simplified-options">`;
+                // [수정] 내비게이션 버튼의 이동 단위를 10년에서 12년으로 수정했습니다.
+                html += `<div class="calendar-header border-none">
+                            <button onclick="navigateMonthYear(${startYear - 12}, 0, 'year', ${isRightCalendar})" class="text-gray-500 hover:bg-gray-100 p-2 rounded-full">&lt;</button>
+                            <span class="text-lg font-bold">${startYear} ~ ${endYear}</span>
+                            <button onclick="navigateMonthYear(${startYear + 12}, 0, 'year', ${isRightCalendar})" class="text-gray-500 hover:bg-gray-100 p-2 rounded-full">&gt;</button>
+                        </div>`;
+                
+                html += `<div class="grid grid-cols-3 gap-y-1 gap-x-0 p-4">`;
+
+                for (let y = startYear; y <= endYear; y++) {
+                    const yearDate = new Date(y, 0, 1);
+                    const { isSelected, isStart, isEnd, isInRange } = isMonthOrYearSelected(yearDate, 'year');
+                    const isCurrentYear = y === getTodayDate().getFullYear();
+                    
+                    let classes = 'simplified-option';
+                    if (isSelected) {
+                        if (isStart && isEnd) {
+                            classes += ' selected single-day-range';
+                        } else if (isStart) {
+                            classes += ' start-of-range';
+                        } else if (isEnd) {
+                            classes += ' end-of-range';
+                        } else if (isInRange) {
+                            classes += ' selected-range';
+                        } else {
+                            classes += ' selected';
+                        }
+                    }
+                    if (!isSelected && isCurrentYear) {
+                        classes += ' current-mark';
+                    }
+
+                    html += `<div class="${classes}" data-year="${y}" data-view="year">${y}년</div>`;
+                }
+
+                html += `</div></div>`;
+
+                wrapper.innerHTML = html;
+                container.appendChild(wrapper);
+            };
+            
+            // 날짜 렌더링 함수
+            const renderDays = (date, container, isRightCalendar = false) => {
+                const year = date.getFullYear();
+                const month = date.getMonth();
+                const type = calendarTypeSelect.value;
+                const showWeekNumbers = type.includes('week');
+
+                const firstDayOfMonth = new Date(year, month, 1);
+                const lastDayOfMonth = new Date(year, month + 1, 0);
+
+                // 월요일을 주의 시작(ISO)으로 하기 위해 조정: 일요일(0)을 7로 변환 후 -1
+                const firstDayOfWeek = (firstDayOfMonth.getDay() + 6) % 7; 
+
+                let html = `
+                    <div class="calendar-header">
+                        <button onclick="navigateMonthYear(${year}, ${month - 1}, 'calendar', ${isRightCalendar})" class="text-gray-500 hover:bg-gray-100 p-2 rounded-full">&lt;</button>
+                        <span class="text-lg font-bold">${year}년 ${month + 1}월</span>
+                        <button onclick="navigateMonthYear(${year}, ${month + 1}, 'calendar', ${isRightCalendar})" class="text-gray-500 hover:bg-gray-100 p-2 rounded-full">&gt;</button>
+                    </div>
+                `;
+
+                // 요일 표시 (월요일부터 시작)
+                html += `<div class="calendar-weekdays ${showWeekNumbers ? 'with-week-numbers' : ''}">`;
+                if (showWeekNumbers) {
+                    html += `<div class="week-column">주</div>`; 
+                }
+                const weekdays = ['월', '화', '수', '목', '금', '토', '일'];
+                weekdays.forEach(day => {
+                    html += `<div>${day}</div>`;
+                });
+                html += `</div>`;
+
+                // 날짜 그리드
+                // Day/DayFromTo 타입일 때만 day-fromto-range 클래스를 적용
+                const gridClass = type.startsWith('day') && type.includes('FromTo') ? 'day-fromto-range' : '';
+                html += `<div class="calendar-grid ${showWeekNumbers ? 'with-week-numbers' : ''} ${gridClass}">`;
+
+                // 시작일 (월요일)을 계산
+                let currentDay = new Date(firstDayOfMonth);
+                currentDay.setDate(firstDayOfMonth.getDate() - firstDayOfWeek);
+                currentDay.setHours(0, 0, 0, 0);
+                
+                let currentWeekNumber = -1;
+
+                for (let i = 0; i < 42; i++) { 
+                    const day = currentDay.getDate();
+                    const currentMonth = currentDay.getMonth();
+                    const dayOfWeek = currentDay.getDay(); // 0(Sun) to 6(Sat)
+
+                    // 주차 번호 표시 (월요일에만 표시)
+                    if (showWeekNumbers && dayOfWeek === 1) { // ISO Week 기준 월요일에 주차 표시
+                        const weekNumber = getWeekOfYear(currentDay);
+                        
+                        let weekClasses = 'calendar-week-number';
+                        const { isSelected, isStart, isEnd } = isWeekSelected(currentDay);
+
+                        // 현재 주차 표시 로직 추가
+                        if (isInCurrentWeek(currentDay) && !isSelected) {
+                            weekClasses += ' current-week-mark';
+                        }
+
+                        if (isSelected) {
+                            if (isStart && isEnd) { 
+                                weekClasses += ' selected-week single-day-range';
+                            } else if (isStart) {
+                                weekClasses += ' start-week-of-range';
+                            } else if (isEnd) {
+                                weekClasses += ' end-week-of-range';
+                            } else {
+                                weekClasses += ' selected-week';
+                            }
+                        }
+                        
+                        html += `<div class="${weekClasses}" data-week-start="${currentDay.toISOString()}" data-view="week-number">${weekNumber}</div>`;
+                        currentWeekNumber = weekNumber;
+                    }
+
+
+                    // 날짜 셀 렌더링
+                    let classes = 'calendar-day';
+                    let isSelected = false;
+
+                    // 다른 달 날짜 처리
+                    if (currentMonth !== month) {
+                        classes += ' outside-month';
+                    } else {
+                        // 현재 달 날짜
+                        const selectionInfo = isDaySelected(currentDay);
+                        isSelected = selectionInfo.isSelected;
+                        
+                        // Day/DayFromTo 타입일 때만 날짜 셀 선택 스타일 적용
+                        if (type.startsWith('day')) {
+                            if (isSelected) {
+                                if (selectionInfo.isStart && selectionInfo.isEnd) {
+                                    classes += ' selected single-day-range';
+                                } else if (selectionInfo.isStart) {
+                                    classes += ' start-of-range';
+                                } else if (selectionInfo.isEnd) {
+                                    classes += ' end-of-range';
+                                } else {
+                                    classes += ' selected-range';
+                                }
+                            }
+                        }
+                        
+                        // Day/DayFromTo 타입일 때만 오늘 표시
+                        if (type.includes('day') && isToday(currentDay) && !isSelected) {
+                            classes += ' today-mark';
+                        }
+                    }
+
+                    // 실제 날짜 셀 추가 (이전 달 날짜 포함)
+                    html += `<div class="${classes}" data-date="${currentDay.toISOString()}" data-view="day">${day}</div>`;
+
+                    // 다음 날짜로 이동
+                    currentDay.setDate(currentDay.getDate() + 1);
+
+                    // 6주차(42일)가 넘어가고 현재 달이 끝나면 루프 중단
+                    if (i >= 42) break; 
+                }
+
+                html += `</div>`;
+                
+                // 컨테이너에 렌더링
+                const wrapper = document.createElement('div');
+                wrapper.className = isRightCalendar ? 'calendar-container right' : 'calendar-container left';
+                wrapper.innerHTML = html;
+                container.appendChild(wrapper);
+            };
+
+            // 전체 달력 렌더링 함수
+            const renderCalendar = () => {
+                const type = calendarTypeSelect.value;
+                calendarPopup.innerHTML = '';
+                
+                const isFromToType = type.endsWith('FromTo');
+                const isTabletView = currentFrameView === 'tablet';
+                const isMultiView = isTabletView && isFromToType && displayDateRight;
+                
+                // Set class for multi-view or single-view container
+                if (isMultiView) { 
+                    calendarPopup.classList.add('calendar-multi-view');
+                    calendarPopup.classList.remove('calendar-single-view');
+                } else {
+                    calendarPopup.classList.remove('calendar-multi-view');
+                    calendarPopup.classList.add('calendar-single-view');
+                }
+                
+                if (currentView === 'month') {
+                    if (isMultiView) {
+                        renderMonthView(displayDateLeft, calendarPopup, false);
+                        renderMonthView(displayDateRight, calendarPopup, true);
+                    } else {
+                        renderMonthView(displayDateLeft, calendarPopup, false);
+                    }
+                } else if (currentView === 'year') {
+                    if (isMultiView) {
+                        renderYearView(displayDateLeft, calendarPopup, false);
+                        renderYearView(displayDateRight, calendarPopup, true);
+                    } else {
+                        renderYearView(displayDateLeft, calendarPopup, false);
+                    }
+                } else if (currentView === 'calendar') {
+                    if (isMultiView) {
+                        renderDays(displayDateLeft, calendarPopup, false);
+                        renderDays(displayDateRight, calendarPopup, true);
+                    } else {
+                        renderDays(displayDateLeft, calendarPopup, false);
+                    }
+                }
+            };
+            
+            // 월 이동/연도 이동 함수 (전역으로 노출)
+            window.navigateMonthYear = (newYear, newMonth, view, isRight = false) => {
+                let newDate = new Date(newYear, newMonth, 1);
+                newDate.setHours(0, 0, 0, 0);
+
+                const type = calendarTypeSelect.value;
+                const isFromToType = type.endsWith('FromTo');
+                const isTabletView = currentFrameView === 'tablet';
+
+                if (isTabletView && isFromToType) {
+                    if (isRight) {
+                        // Right calendar should not precede the left one
+                        if (newDate.getTime() <= displayDateLeft.getTime()) {
+                            return;
+                        }
+                    } else { // isLeft
+                        // Left calendar should not equal or follow the right one
+                        if (displayDateRight && newDate.getTime() >= displayDateRight.getTime()) {
+                            return;
+                        }
+                    }
+                }
+
+                // Update displayDate
+                if (isRight && displayDateRight) {
+                    displayDateRight = newDate;
+                } else {
+                    displayDateLeft = newDate;
+                }
+                
+                renderCalendar();
+            };
+
+
+            // 이벤트 리스너 설정
+            calendarInput.addEventListener('click', showPopup);
+
+            clearButton.addEventListener('click', (event) => {
+                event.stopPropagation();
+                selectedDates = [];
+                tempSelectedDates = [];
+                updateInputValue();
+                if (calendarPopupOverlay.classList.contains('show')) {
+                    initializeDisplayDates();
+                    renderCalendar();
+                }
+            });
+
+            calendarTypeSelect.addEventListener('change', () => {
+                selectedDates = [];
+                updateInputValue();
+                if (calendarPopupOverlay.classList.contains('show')) {
+                    initializeDisplayDates();
+                    renderCalendar();
+                }
+            });
+
+            mobileButton.addEventListener('click', () => setView('mobile'));
+            tabletButton.addEventListener('click', () => setView('tablet'));
+            
+            // 달력 클릭 이벤트 핸들러 (날짜 선택 로직)
+            calendarPopup.addEventListener('click', (event) => {
+                const target = event.target.closest('[data-view]');
+                if (!target) return;
+
+                const type = calendarTypeSelect.value;
+                let selectionMade = false;
+
+                if (target.dataset.view === 'day' && target.dataset.date) {
+                    const dayDate = new Date(target.dataset.date);
+                    
+                    if (target.classList.contains('outside-month')) return;
+                    
+                    if (type.includes('week')) {
+                         // [로직 유지] Week/WeekFromTo 타입일 때는 날짜 셀 클릭 시 해당 주의 월요일(weekStartDate)을 선택 대상으로 사용
+                         const { start: weekStartDate } = getISOWeekRange(dayDate);
+
+                         if (type === 'week') {
+                             // Week (단일 주) 선택: 월요일로 간주하고 선택
+                             if (tempSelectedDates.length === 1 && getISOWeekRange(tempSelectedDates[0]).start.getTime() === weekStartDate.getTime()) {
+                                 tempSelectedDates = []; 
+                             } else {
+                                 tempSelectedDates = [weekStartDate];
+                             }
+                             selectionMade = true;
+                         } else if (type === 'weekFromTo') {
+                             // WeekFromTo (기간) 선택: 월요일로 간주하고 범위 지정
+                             if (tempSelectedDates.length === 0) {
+                                 tempSelectedDates = [weekStartDate];
+                             } else if (tempSelectedDates.length === 1) {
+                                 const firstWeekStart = getISOWeekRange(tempSelectedDates[0]).start;
+                                 
+                                 if (weekStartDate.getTime() === firstWeekStart.getTime()) {
+                                     tempSelectedDates = []; 
+                                 } else {
+                                     tempSelectedDates.push(weekStartDate);
+                                     tempSelectedDates.sort((a, b) => a.getTime() - b.getTime());
+                                 }
+                             } else {
+                                 tempSelectedDates = [weekStartDate];
+                             }
+                             selectionMade = true;
+                         }
+                    } else if (type === 'day') {
+                        tempSelectedDates = [dayDate];
+                        selectionMade = true;
+                    } else if (type === 'dayFromTo') {
+                        if (tempSelectedDates.length === 0) {
+                            tempSelectedDates = [dayDate];
+                        } else if (tempSelectedDates.length === 1) {
+                            if (dayDate.getTime() === tempSelectedDates[0].getTime()) {
+                                tempSelectedDates = [];
+                            } else {
+                                tempSelectedDates.push(dayDate); 
+                                tempSelectedDates.sort((a, b) => a.getTime() - b.getTime());
+                            }
+                        } else {
+                            tempSelectedDates = [dayDate];
+                        }
+                        selectionMade = true;
+                    }
+                    
+                } else if (target.dataset.view === 'week-number' && target.dataset.weekStart) {
+                    // [로직 유지] Week Number 클릭 시 선택 로직
+                    const weekStartDate = new Date(target.dataset.weekStart);
+                    
+                    if (type === 'week' || type === 'weekFromTo') {
+                        if (type === 'week') {
+                            // Week (단일 주) 선택: 월요일로 간주하고 선택
+                            if (tempSelectedDates.length === 1 && getISOWeekRange(tempSelectedDates[0]).start.getTime() === weekStartDate.getTime()) {
+                                tempSelectedDates = []; 
+                            } else {
+                                tempSelectedDates = [weekStartDate];
+                            }
+                            selectionMade = true;
+                        } else if (type === 'weekFromTo') {
+                            // WeekFromTo (기간) 선택: 월요일로 간주하고 범위 지정
+                            if (tempSelectedDates.length === 0) {
+                                tempSelectedDates = [weekStartDate];
+                            } else if (tempSelectedDates.length === 1) {
+                                const firstWeekStart = getISOWeekRange(tempSelectedDates[0]).start;
+                                
+                                if (weekStartDate.getTime() === firstWeekStart.getTime()) {
+                                    tempSelectedDates = []; 
+                                } else {
+                                    tempSelectedDates.push(weekStartDate);
+                                    tempSelectedDates.sort((a, b) => a.getTime() - b.getTime());
+                                }
+                            } else {
+                                tempSelectedDates = [weekStartDate];
+                            }
+                            selectionMade = true;
+                        }
+                    }
+                } 
+                
+                else if (target.dataset.view === 'month' && target.dataset.month) {
+                    const month = parseInt(target.dataset.month);
+                    // 멀티뷰 시 현재 클릭된 달력이 어느 쪽인지 판단하기 위해 상위 컨테이너 확인
+                    const parentCalendar = target.closest('.calendar-container');
+                    const isRightCalendar = parentCalendar && parentCalendar.classList.contains('right');
+
+                    let year = isRightCalendar && currentFrameView === 'tablet' ? displayDateRight.getFullYear() : displayDateLeft.getFullYear();
+                    
+                    const date = new Date(year, month, 1);
+                    
+                    if (type === 'month') {
+                        tempSelectedDates = [date];
+                    } else if (type === 'monthFromTo') {
+                        if (tempSelectedDates.length === 0) {
+                           tempSelectedDates = [date];
+                        } else if (tempSelectedDates.length === 1) {
+                            if (date.getTime() === tempSelectedDates[0].getTime()) {
+                                tempSelectedDates = [];
+                            } else {
+                                tempSelectedDates.push(date); 
+                                tempSelectedDates.sort((a, b) => a.getTime() - b.getTime()); 
+                            }
+                        } else {
+                            tempSelectedDates = [date];
+                        }
+                    }
+                    selectionMade = true;
+
+                } else if (target.dataset.view === 'year' && target.dataset.year) {
+                    const year = parseInt(target.dataset.year);
+                    const date = new Date(year, 0, 1);
+
+                    if (type === 'year') {
+                        tempSelectedDates = [date];
+                    } else if (type === 'yearFromTo') {
+                        if (tempSelectedDates.length === 0) {
+                            tempSelectedDates = [date];
+                        } else if (tempSelectedDates.length === 1) {
+                            if (date.getTime() === tempSelectedDates[0].getTime()) {
+                                tempSelectedDates = [];
+                            } else {
+                                tempSelectedDates.push(date);
+                                tempSelectedDates.sort((a, b) => a.getTime() - b.getTime()); 
+                            }
+                        } else {
+                            tempSelectedDates = [date];
+                        }
+                    }
+                    selectionMade = true;
+                }
+                
+                if (selectionMade) {
+                    renderCalendar();
+                    updateInputValue(); // 임시 선택된 값으로 팝업 헤더 업데이트
+                }
+            });
+
+            // 확인 버튼: 선택된 임시 날짜를 최종 날짜로 확정
+            confirmButton.addEventListener('click', () => {
+                selectedDates = [...tempSelectedDates].sort((a,b) => a.getTime() - b.getTime());
+                updateInputValue();
+                hidePopup();
+            });
+
+            // 팝업 오버레이 클릭 시 팝업 닫기 (팝업 내부 클릭은 제외)
+            calendarPopupOverlay.addEventListener('click', (event) => {
+                if (event.target === calendarPopupOverlay) {
+                    hidePopup();
+                }
+            });
+
+            // 초기 뷰 설정 및 날짜 초기화
+            initializeDisplayDates();
+            switchView(currentFrameView);
+            updateInputValue();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>멀티 선택 드롭다운 (뷰 전환 지원)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #5c6470;
+            display: flex;
+            flex-direction: column; /* 버튼과 프레임을 세로로 배치 */
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 2rem 1rem; /* 상하 패딩 증가 */
+        }
+
+        .view-controls {
+            margin-bottom: 1.5rem;
+            display: flex;
+            gap: 1rem;
+        }
+
+        .phone-frame {
+            position: relative;
+            width: 375px; /* 모바일 뷰 기본 */
+            height: 667px;
+            background-color: #fff;
+            border-radius: 8px;
+            border: 1px solid #5c6470;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease-in-out;
+        }
+
+        .tablet-view .phone-frame {
+            width: 768px; /* 태블릿 뷰 너비 */
+            height: 667px; 
+        }
+
+        .phone-content {
+            padding: 1.5rem;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+        }
+        
+        /* ----------------------------------------------------- */
+        /* 팝업 공통 스타일 (하단 슬라이드 업) - 원본 유지 */
+        /* ----------------------------------------------------- */
+        .mobile-popup-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease-in-out;
+            z-index: 1000;
+        }
+
+        .mobile-popup-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .dropdown-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px; /* 원본 유지 */
+            background-color: #fff;
+            border-top-left-radius: 1rem;
+            border-top-right-radius: 1rem;
+            box-shadow: 0 -10px 20px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            transform: translateY(100%);
+            transition: transform 0.3s ease-in-out;
+            
+            /* 모바일 높이 동작을 유지하기 위해 flex-direction: column만 추가 */
+            display: flex; 
+            flex-direction: column;
+            height: auto; /* 내용물 높이만큼만 차지 */
+            max-height: 80vh; /* (추가) 너무 커지는 것 방지 */
+        }
+
+        .mobile-popup-overlay.show .dropdown-container {
+            transform: translateY(0);
+        }
+
+        /* ----------------------------------------------------- */
+        /* [모바일 뷰] 원본 레이아웃 유지 */
+        /* ----------------------------------------------------- */
+
+        .popup-main {
+            /* 모바일 뷰에서는 블록 요소로 동작하여 수직으로 쌓이게 함 (높이 자동 축소) */
+            display: block; 
+            flex-grow: 0; /* 높이 확장을 막음 */
+        }
+        
+        .list-all {
+            /* 모바일에서는 100% 사용 */
+            width: 100%; 
+            display: block;
+        }
+
+        .list-selected {
+            display: none; /* 모바일에서 선택된 목록 숨김 */
+        }
+        
+        .option-list {
+            max-height: 300px; /* 원본 유지 */
+            overflow-y: auto; /* 원본 유지 */
+            padding: 0.5rem 0; /* 원본 유지 */
+        }
+
+        /* ----------------------------------------------------- */
+        /* [태블릿 뷰] 오버라이드 (2단 분할) */
+        /* ----------------------------------------------------- */
+        .tablet-view .dropdown-container {
+            /* 고정 크기 및 중앙 배치 효과 (max-width: 600px 이상일 때) */
+            max-width: 600px;
+            height: 500px; 
+            max-height: 500px; 
+            border-top-left-radius: 0.5rem; 
+            border-top-right-radius: 0.5rem; 
+        }
+
+        .tablet-view .popup-main {
+            display: flex; /* 2단 분할 활성화 */
+            flex-grow: 1; /* 컨테이너의 남은 높이를 모두 차지 */
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        .tablet-view .list-all {
+            width: 50%; 
+            border-right: 1px solid #e5e7eb;
+            display: flex; 
+            flex-direction: column; /* 검색창과 리스트를 세로로 배치 */
+            min-height: 0;
+        }
+        
+        .tablet-view .list-selected {
+            width: 50%;
+            background-color: #f9fafb;
+            display: flex; 
+            flex-direction: column;
+            min-height: 0;
+        }
+        
+        .tablet-view .option-list {
+            max-height: none; /* 모바일 max-height 해제 */
+            flex-grow: 1; /* 남은 공간 모두 차지하여 스크롤 */
+            overflow-y: auto;
+        }
+        
+        /* 선택된 항목 스타일 */
+        .list-selected .selected-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            border-bottom: 1px solid #eee;
+        }
+        .remove-button {
+            color: #ef4444;
+            cursor: pointer;
+            font-size: 1.25rem;
+            line-height: 1;
+            transition: color 0.2s;
+        }
+        .remove-button:hover {
+            color: #dc2626;
+        }
+
+        /* ----------------------------------------------------- */
+        /* 원본 스타일 (검색/리스트/버튼)
+        /* ----------------------------------------------------- */
+        .search-input-wrapper { position: relative; padding: 1rem; border-bottom: 1px solid #e5e7eb; flex-shrink: 0; }
+        .search-input { width: 100%; padding: 0.75rem 2.5rem 0.75rem 1rem; border: 1px solid #d1d5db; border-radius: 0.5rem; outline: none; }
+        .search-input:focus { border-color: #3b82f6; }
+        .search-icon { position: absolute; left: 1.5rem; top: 50%; transform: translateY(-50%); color: #9ca3af; }
+        .clear-button { position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); color: #9ca3af; cursor: pointer; width: 1.5rem; height: 1.5rem; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: background-color 0.2s; }
+        .clear-button:hover { background-color: #f3f4f6; }
+        
+        .option-item { display: flex; align-items: center; padding: 0.75rem 1rem; cursor: pointer; transition: background-color 0.2s; }
+        .option-item:hover { background-color: #f3f4f6; }
+        .checkbox-container { display: flex; align-items: center; justify-content: center; width: 1.25rem; height: 1.25rem; border: 1px solid #d1d5db; border-radius: 0.25rem; transition: background-color 0.2s; flex-shrink: 0; }
+        .checkbox-container.checked { background-color: #3b82f6; border-color: #3b82f6; }
+        .checkbox-container svg { color: #fff; display: none; }
+        .checkbox-container.checked svg { display: block; }
+        .option-label { margin-left: 0.75rem; color: #374151; flex-grow: 1; }
+        
+        .action-buttons { display: flex; border-top: 1px solid #e5e7eb; padding: 1rem; gap: 0.5rem; flex-shrink: 0; }
+        .action-button { flex-grow: 1; padding: 0.75rem 1rem; border-radius: 0.5rem; font-weight: 600; transition: background-color 0.2s; cursor: pointer; text-align: center;}
+        .action-button.reset { background-color: #f3f4f6; color: #4b5563; }
+        .action-button.reset:hover { background-color: #e5e7eb; }
+        .action-button.confirm { background-color: #3b82f6; color: #fff; }
+        .action-button.confirm:hover { background-color: #2563eb; }
+    </style>
+</head>
+<body id="appBody" class="mobile-view"> 
+
+    <div class="view-controls">
+        <button id="mobileViewButton" class="px-4 py-2 rounded-md font-semibold text-white bg-blue-500 hover:bg-blue-600">
+            모바일 뷰 (375px)
+        </button>
+        <button id="tabletViewButton" class="px-4 py-2 rounded-md font-semibold text-gray-700 bg-gray-200 hover:bg-gray-300">
+            태블릿 뷰 (768px)
+        </button>
+    </div>
+
+    <div class="phone-frame" id="phoneFrame">
+        <div class="phone-content">
+            <h1 class="text-xl font-bold text-center text-gray-800">모바일/태블릿 멀티콤보박스</h1>
+            <p class="text-sm text-center text-gray-500 mt-2">아래 입력창을 터치하여 선택하세요.</p>
+            <div class="relative w-full max-w-xs" id="triggerWrapper">
+                <input type="text" id="triggerInput" class="rounded-lg p-3 pr-10 text-lg text-gray-700 w-full cursor-pointer focus:outline-none border border-gray-300" placeholder="선택하세요" readonly>
+                <svg class="w-5 h-5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </div>
+        </div>
+        <div class="mobile-popup-overlay" id="popupOverlay">
+            <div class="dropdown-container">
+                
+                <div class="popup-main" id="popupMainContent">
+                    
+                    <div class="list-all">
+                        <div class="search-input-wrapper">
+                            <svg class="search-icon w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                            <input type="text" id="searchInput" class="search-input">
+                            <div id="clearButton" class="clear-button">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </div>
+                        </div>
+
+                        <div id="optionList" class="option-list">
+                            </div>
+                    </div>
+                    
+                    <div class="list-selected" id="listSelectedDiv">
+                        <div class="option-list" id="selectedList">
+                            <div class="p-4 text-gray-500 text-sm italic" id="selectedListPlaceholder">선택된 항목이 없습니다.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button id="resetButton" class="action-button reset">초기화</button>
+                    <button id="confirmButton" class="action-button confirm">확인 (0개)</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // 항목 개수 증가하여 스크롤 테스트 용이하게 함
+            const data = [
+                { id: 1, label: '멜론라떼' },
+                { id: 2, label: '딸기크리미라떼' },
+                { id: 3, label: '제주말차크리미라떼' },
+                { id: 4, label: '단짠치즈티라떼' },
+                { id: 5, label: '영암고구마라떼' },
+                { id: 6, label: '공주밤라떼' },
+                { id: 7, label: '빅바나나 미숫가루라떼' },
+                { id: 8, label: '아메리카노' },
+                { id: 9, label: '카페라떼' },
+                { id: 10, label: '바닐라라떼' },
+                { id: 11, label: '카라멜 마키아또' },
+                { id: 12, label: '카페모카' },
+                { id: 13, label: '에스프레소' }
+            ];
+
+            const appBody = document.getElementById('appBody');
+            const triggerInput = document.getElementById('triggerInput');
+            const popupOverlay = document.getElementById('popupOverlay');
+            const optionList = document.getElementById('optionList');
+            const selectedList = document.getElementById('selectedList'); // 추가
+            const selectedListPlaceholder = document.getElementById('selectedListPlaceholder'); // 추가
+            const searchInput = document.getElementById('searchInput');
+            const clearButton = document.getElementById('clearButton');
+            const resetButton = document.getElementById('resetButton');
+            const confirmButton = document.getElementById('confirmButton');
+            const mobileButton = document.getElementById('mobileViewButton'); // 추가
+            const tabletButton = document.getElementById('tabletViewButton'); // 추가
+            
+            let selectedItems = new Map(); // Set 대신 Map을 사용하여 {id: {id, label}} 형태로 저장
+            let committedItems = new Map(); // 취소(ESC/오버레이 클릭) 시 복원용
+            let currentView = 'mobile'; // 현재 뷰 상태
+
+            // --- 뷰 전환 로직 ---
+
+            function isTabletView() {
+                return currentView === 'tablet';
+            }
+
+            function setView(view) {
+                if (view === 'tablet') {
+                    appBody.classList.remove('mobile-view');
+                    appBody.classList.add('tablet-view');
+                    
+                    // 버튼 스타일 업데이트
+                    tabletButton.classList.replace('bg-gray-200', 'bg-blue-500');
+                    tabletButton.classList.replace('text-gray-700', 'text-white');
+                    mobileButton.classList.replace('bg-blue-500', 'bg-gray-200');
+                    mobileButton.classList.replace('text-white', 'text-gray-700');
+                    
+                    currentView = 'tablet';
+                } else { // mobile
+                    appBody.classList.remove('tablet-view');
+                    appBody.classList.add('mobile-view');
+                    
+                    // 버튼 스타일 업데이트
+                    mobileButton.classList.replace('bg-gray-200', 'bg-blue-500');
+                    mobileButton.classList.replace('text-gray-700', 'text-white');
+                    tabletButton.classList.replace('bg-blue-500', 'bg-gray-200');
+                    tabletButton.classList.replace('text-white', 'text-gray-700');
+
+                    currentView = 'mobile';
+                }
+                
+                // 뷰 전환 시 팝업이 열려 있었다면 닫기
+                if (popupOverlay.classList.contains('show')) {
+                    popupOverlay.classList.remove('show');
+                }
+            }
+            
+            mobileButton.addEventListener('click', () => setView('mobile'));
+            tabletButton.addEventListener('click', () => setView('tablet'));
+            
+            // --- 드롭다운 공통 로직 ---
+
+            function updateConfirmButton() {
+                const count = selectedItems.size;
+                confirmButton.textContent = `확인 (${count}개)`;
+            }
+
+            function renderOptions(filteredData) {
+                optionList.innerHTML = '';
+                filteredData.forEach(item => {
+                    const isChecked = selectedItems.has(item.id);
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'option-item';
+                    itemDiv.setAttribute('data-id', item.id);
+                    itemDiv.setAttribute('data-label', item.label);
+                    
+                    itemDiv.innerHTML = `
+                        <div class="checkbox-container ${isChecked ? 'checked' : ''}">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                        </div>
+                        <span class="option-label">${item.label}</span>
+                    `;
+                    optionList.appendChild(itemDiv);
+                });
+            }
+            
+            // [추가] 선택된 항목 목록 렌더링 (태블릿 뷰 전용)
+            function renderSelectedItems() {
+                selectedList.innerHTML = ''; 
+                
+                if (selectedItems.size === 0) {
+                    selectedList.appendChild(selectedListPlaceholder);
+                    selectedListPlaceholder.classList.remove('hidden');
+                    return;
+                }
+                
+                selectedListPlaceholder.classList.add('hidden');
+                
+                // Map의 값을 배열로 변환하여 렌더링
+                Array.from(selectedItems.values()).forEach(item => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'selected-item';
+                    itemDiv.setAttribute('data-id', item.id);
+                    
+                    itemDiv.innerHTML = `
+                        <span>${item.label}</span>
+                        <span class="remove-button" data-id="${item.id}" title="제거">
+                            &times;
+                        </span>
+                    `;
+                    selectedList.appendChild(itemDiv);
+                });
+            }
+            
+            // 항목 선택/해제 로직
+            function toggleItem(itemId) {
+                const item = data.find(d => d.id === itemId);
+                
+                if (selectedItems.has(itemId)) {
+                    selectedItems.delete(itemId);
+                } else {
+                    selectedItems.set(itemId, item);
+                }
+
+                updateUIOnSelectionChange();
+            }
+            
+            // 선택 변경 시 UI를 업데이트하는 통합 함수
+            function updateUIOnSelectionChange() {
+                // 왼쪽 목록 업데이트 (체크박스 상태)
+                document.querySelectorAll('.option-item').forEach(itemDiv => {
+                    const itemId = parseInt(itemDiv.getAttribute('data-id'));
+                    const isChecked = selectedItems.has(itemId);
+                    const checkboxContainer = itemDiv.querySelector('.checkbox-container');
+                    checkboxContainer.classList.toggle('checked', isChecked);
+                });
+
+                // 오른쪽 목록 업데이트 (태블릿 뷰에서만)
+                if (isTabletView()) {
+                    renderSelectedItems();
+                }
+
+                updateConfirmButton();
+            }
+
+            // 초기 렌더링
+            renderOptions(data.slice(0, 7)); // 초기 데이터 7개만 렌더링
+            updateConfirmButton();
+
+            // 팝업 열기
+            triggerInput.addEventListener('click', (event) => {
+                // 팝업 열기 전에 현재 선택 항목을 복사해 둠
+                committedItems = new Map(selectedItems); 
+                
+                searchInput.value = '';
+                renderOptions(data); // 전체 데이터로 목록 리렌더링
+                
+                if (isTabletView()) {
+                    renderSelectedItems(); 
+                }
+                
+                popupOverlay.classList.add('show');
+                event.stopPropagation();
+            });
+
+            // 팝업 닫기 (오버레이 클릭 시 또는 ESC 키) - 취소 기능
+            popupOverlay.addEventListener('click', (event) => {
+                if (event.target.id === 'popupOverlay') {
+                    if (popupOverlay.classList.contains('show')) {
+                        // 임시 저장된 항목으로 복원 (취소 기능)
+                        selectedItems = new Map(committedItems); 
+                        renderOptions(data);
+                        if (isTabletView()) {
+                            renderSelectedItems();
+                        }
+                        updateConfirmButton();
+                        popupOverlay.classList.remove('show');
+                    }
+                }
+            });
+            
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape' && popupOverlay.classList.contains('show')) {
+                    // 임시 저장된 항목으로 복원
+                    selectedItems = new Map(committedItems); 
+                    renderOptions(data);
+                    if (isTabletView()) {
+                        renderSelectedItems();
+                    }
+                    updateConfirmButton();
+                    popupOverlay.classList.remove('show');
+                }
+            });
+
+            // 검색 기능
+            searchInput.addEventListener('input', (event) => {
+                const query = event.target.value.toLowerCase();
+                const filteredData = data.filter(item => item.label.toLowerCase().includes(query));
+                renderOptions(filteredData);
+            });
+            
+            // 검색창 초기화
+            clearButton.addEventListener('click', () => {
+                searchInput.value = '';
+                renderOptions(data);
+            });
+
+            // 왼쪽 목록 선택/해제 로직
+            optionList.addEventListener('click', (event) => {
+                const itemDiv = event.target.closest('.option-item');
+                if (!itemDiv) return;
+
+                const itemId = parseInt(itemDiv.getAttribute('data-id'));
+                toggleItem(itemId);
+            });
+            
+            // [추가] 오른쪽 목록 (선택된 항목)에서 제거 버튼 클릭 로직
+            selectedList.addEventListener('click', (event) => {
+                if (event.target.classList.contains('remove-button')) {
+                    const itemId = parseInt(event.target.getAttribute('data-id'));
+                    toggleItem(itemId); // 항목 제거
+                }
+            });
+
+            // 초기화 버튼
+            resetButton.addEventListener('click', () => {
+                selectedItems.clear();
+                searchInput.value = '';
+                renderOptions(data);
+                if (isTabletView()) {
+                    renderSelectedItems();
+                }
+                updateConfirmButton();
+            });
+            
+            // 확인 버튼 (팝업 닫기 기능 및 값 전달)
+            confirmButton.addEventListener('click', () => {
+                const selectedLabels = Array.from(selectedItems.values()).map(item => item.label);
+                
+                triggerInput.value = selectedLabels.join(', ');
+                committedItems = new Map(selectedItems); // 최종 확정
+                popupOverlay.classList.remove('show');
+            });
+            
+            // 초기 렌더링에 사용된 데이터는 원본과 동일하게 7개로 제한
+            renderOptions(data.slice(0, 7)); 
+        });
+    </script>
+</body>
+</html>
