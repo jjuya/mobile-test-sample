@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>모바일 키보드 Fixed UI 테스트</title>
+    <title>모바일 키보드 Fixed UI 테스트 (VisualViewport 반영)</title>
     <!-- Tailwind CSS 로드 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -24,8 +24,8 @@
             bottom: 0;
             left: 0;
             right: 0;
-            /* transform을 사용할 때 transition을 적용하여 움직임을 부드럽게 함 (성능 최적화) */
-            transition: transform 0.2s ease-out;
+            /* Transition을 제거하여 위치 업데이트가 즉시 반영되도록 함 */
+            transition: none; 
             z-index: 50;
         }
 
@@ -104,37 +104,30 @@
 
     <script>
         const fixedContainer = document.getElementById('fixed-container');
-        const inputField = document.getElementById('input-field'); // Fixed UI 내부 input
-        const lastInputField = document.getElementById('last_input'); // 일반 콘텐츠 영역 input
+        const inputField = document.getElementById('input-field');
+        const lastInputField = document.getElementById('last_input');
         const statusDisplay = document.getElementById('status');
-        
-        let fixedUIHeight = 0; 
         
         // 1. Visual Viewport API 지원 여부 확인
         if (window.visualViewport) {
             statusDisplay.textContent = 'Visual Viewport API 지원 확인됨.';
             
-            // 2. Visual Viewport Resize 및 Scroll 이벤트 리스너 등록 (핵심 보정 로직)
+            // 2. Visual Viewport Resize 및 Scroll 이벤트 리스너 등록
+            // resize: 키보드 열림/닫힘 감지 (높이 변화)
+            // scroll: 키보드 열린 상태에서 사용자 스크롤 감지 (위치 변화)
             window.visualViewport.addEventListener('resize', handleKeyboardResize);
-            // [수정된 부분]: 스크롤 이벤트 리스너 추가
             window.visualViewport.addEventListener('scroll', handleKeyboardResize);
             
             // 3. Input 필드 포커스/블러 이벤트 처리
             inputField.addEventListener('focus', handleFocus);
             inputField.addEventListener('blur', handleBlur);
-            
-            // 화면 하단 근접 입력 필드에도 리스너 추가
             lastInputField.addEventListener('focus', handleFocus);
             lastInputField.addEventListener('blur', handleBlur);
-
-
-            // 초기 Fixed UI 높이 측정
-            fixedUIHeight = fixedContainer.offsetHeight;
 
         } else {
             statusDisplay.textContent = 'Visual Viewport API를 지원하지 않아 JS 조정이 어렵습니다.';
         }
-
+        
         /**
          * 키보드 등장/퇴장 또는 스크롤 시 실행되는 핵심 로직 (resize 및 scroll 이벤트)
          */
@@ -142,22 +135,21 @@
             const currentVisualHeight = window.visualViewport.height;
             const currentInnerHeight = window.innerHeight;
             
+            // 키보드 높이 계산 (Layout - Visual)
             let keyboardHeight = currentInnerHeight - currentVisualHeight;
             keyboardHeight = Math.max(0, Math.floor(keyboardHeight));
             
             if (keyboardHeight > 0) {
-                // [수정된 부분]: 키보드 높이에 Visual Viewport의 스크롤 위치를 더해 보정
-                // Fixed UI가 스크롤과 무관하게 Visual Viewport 하단에 고정되도록 함
+                // [핵심 로직] 키보드 높이 + Visual Viewport의 스크롤 위치를 더해 보정
+                // Visual Viewport가 스크롤 될 때 Fixed UI도 함께 움직이는 것을 방지하고 키보드 상단에 고정합니다.
                 const scrollOffset = window.visualViewport.scrollTop;
                 const totalTransform = keyboardHeight + scrollOffset; 
                 
-                // Fixed UI를 키보드 높이 + 스크롤 오프셋만큼 위로 이동 (Transform 사용)
+                // GPU 가속을 이용한 위치 보정 (Transition이 없으므로 즉시 고정됨)
                 fixedContainer.style.transform = `translateY(-${totalTransform}px)`;
 
-                // Android Chrome의 Jerk 방지를 위해 scrollIntoView는 여전히 호출하지 않습니다.
-                
                 statusDisplay.classList.replace('bg-indigo-500', 'bg-red-500');
-                statusDisplay.textContent = `키보드 열림: ${keyboardHeight}px. Scroll Offset: ${scrollOffset}px. Fixed UI transform 적용됨.`;
+                statusDisplay.textContent = `키보드 열림: ${keyboardHeight}px. Scroll Offset: ${scrollOffset}px. Fixed UI 고정됨.`;
                 
             } else {
                 // 키보드가 닫혔으므로 Fixed UI 위치 초기화
@@ -166,27 +158,37 @@
                 statusDisplay.textContent = '키보드 닫힘. Fixed UI 위치 초기화.';
             }
         }
-
+        
         /**
-         * Input 포커스 시 처리 (Fixed UI 보정을 위한 시차 확보)
+         * Input 포커스 시 처리 (키보드 등장 유도 및 초기 보정)
          */
-        function handleFocus() {
-             // 50ms 지연 후 보정 로직 실행
-             // 키보드가 올라오면서 Visual Viewport 크기가 바뀔 시간을 잠시 확보합니다.
-             // 이 지연은 Android Chrome에서 Fixed UI가 튀는 현상을 줄이는 데 도움이 됩니다.
+        function handleFocus(event) {
+            const focusedElement = event.target;
+            
+             // 1. Fixed UI 위치 보정 시작 (키보드 높이 감지)
+             // Fixed UI가 키보드 위로 즉시 이동할 수 있도록 50ms 지연 후 보정 시작
             setTimeout(() => {
-                 // 지연 후 한 번 호출하여 초기 키보드 등장 시 Fixed UI 위치 보정
                 handleKeyboardResize();
             }, 50);
 
-            statusDisplay.textContent = '입력 필드 포커스됨. 키보드 감지 대기...';
+             // 2. 만약 스크롤 가능한 영역의 Input (#last_input)을 클릭했다면,
+             // Fixed UI가 올라온 후 해당 Input이 가려지지 않도록 수동으로 스크롤 이동
+            if (focusedElement.id === 'last_input') {
+                 // Fixed bar가 위치를 잡을 시간을 준 후 (200ms) 스크롤 수행
+                 // 'end' 옵션은 요소를 뷰포트 하단에 최대한 가깝게 위치시킵니다.
+                setTimeout(() => {
+                    focusedElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                }, 200); 
+            }
+
+            statusDisplay.textContent = '입력 필드 포커스됨. 키보드 감지 중...';
         }
 
         /**
          * Input 블러 시 처리
          */
         function handleBlur() {
-            // 키보드가 닫히면 visualViewport resize 이벤트가 발생하여 위치를 자동으로 초기화합니다.
+            // 키보드가 닫히면 visualViewport resize 이벤트가 발생하여 handleKeyboardResize를 호출하고 위치를 초기화합니다.
         }
 
         // 초기 로드 시 스크롤을 맨 위로 이동 (테스트 편의를 위해)
