@@ -6,6 +6,9 @@
     <title>멀티 선택 드롭다운 (뷰 전환 지원)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        /* ----------------------------------------------------- */
+        /* 기본 레이아웃 및 뷰 전환 스타일 */
+        /* ----------------------------------------------------- */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
         body {
             font-family: 'Inter', sans-serif;
@@ -26,7 +29,7 @@
 
         .phone-frame {
             position: relative;
-            width: 375px; /* 모바일 뷰 기본 */
+            width: 375px; /* 모바일 뷰 기본 너비 */
             height: 667px;
             background-color: #fff;
             border-radius: 8px;
@@ -35,11 +38,11 @@
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            transition: all 0.3s ease-in-out;
+            transition: all 0.3s ease-in-out; /* 너비/높이 전환 애니메이션 */
         }
 
         .tablet-view .phone-frame {
-            width: 768px; /* 태블릿 뷰 너비 */
+            width: 768px; /* 태블릿 뷰 너비로 확장 */
             height: 667px; 
         }
 
@@ -53,7 +56,7 @@
         }
         
         /* ----------------------------------------------------- */
-        /* 팝업 공통 스타일 (하단 슬라이드 업) - 원본 유지 */
+        /* 팝업 공통 스타일 (하단 슬라이드 업) */
         /* ----------------------------------------------------- */
         .mobile-popup-overlay {
             position: absolute;
@@ -64,7 +67,7 @@
             background-color: rgba(0, 0, 0, 0.5);
             display: flex;
             justify-content: center;
-            align-items: flex-end;
+            align-items: flex-end; /* 하단에 배치 */
             opacity: 0;
             visibility: hidden;
             transition: opacity 0.3s ease-in-out;
@@ -79,28 +82,27 @@
         .dropdown-container {
             position: relative;
             width: 100%;
-            max-width: 400px; /* 원본 유지 */
+            max-width: 400px; /* 모바일 뷰에서의 최대 너비 (기본값) */
             background-color: #fff;
             border-top-left-radius: 1rem;
             border-top-right-radius: 1rem;
             box-shadow: 0 -10px 20px rgba(0, 0, 0, 0.1);
             overflow: hidden;
-            transform: translateY(100%);
+            transform: translateY(100%); /* 하단 숨김 */
             transition: transform 0.3s ease-in-out;
             
-            /* 모바일 높이 동작을 유지하기 위해 flex-direction: column만 추가 */
             display: flex; 
-            flex-direction: column;
+            flex-direction: column; /* 내용물을 세로로 배치 */
             height: auto; /* 내용물 높이만큼만 차지 */
-            max-height: 80vh; /* (추가) 너무 커지는 것 방지 */
+            max-height: 80vh; /* 너무 커지는 것 방지 */
         }
 
         .mobile-popup-overlay.show .dropdown-container {
-            transform: translateY(0);
+            transform: translateY(0); /* 슬라이드 업 */
         }
 
         /* ----------------------------------------------------- */
-        /* [모바일 뷰] 원본 레이아웃 유지 */
+        /* [모바일 뷰] - 기본 스타일 (단일 목록) */
         /* ----------------------------------------------------- */
 
         .popup-main {
@@ -110,42 +112,46 @@
         }
         
         .list-all {
-            /* 모바일에서는 100% 사용 */
             width: 100%; 
-            display: block;
+            display: block; /* 검색 + 옵션 목록 */
         }
 
         .list-selected {
-            display: none; /* 모바일에서 선택된 목록 숨김 */
+            display: none; /* 모바일에서 선택된 목록 (2열 중 오른쪽) 숨김 */
         }
         
         .option-list {
-            max-height: 300px; /* 원본 유지 */
-            overflow-y: auto; /* 원본 유지 */
-            padding: 0.5rem 0; /* 원본 유지 */
+            max-height: 300px; /* 모바일 뷰에서 최대 높이 및 스크롤 */
+            overflow-y: auto; 
+            padding: 0.5rem 0; 
         }
 
         /* ----------------------------------------------------- */
-        /* [태블릿 뷰] 오버라이드 (2단 분할) */
+        /* [태블릿 뷰] 오버라이드 (2단 분할 레이아웃) */
         /* ----------------------------------------------------- */
         .tablet-view .dropdown-container {
-            /* 고정 크기 및 중앙 배치 효과 (max-width: 600px 이상일 때) */
-            max-width: 600px;
-            height: 500px; 
+            /* 고정 크기 및 중앙 배치 효과 */
+            max-width: 600px; /* 팝업 너비 고정 */
+            height: 500px; /* 팝업 높이 고정 */
             max-height: 500px; 
-            border-top-left-radius: 0.5rem; 
-            border-top-right-radius: 0.5rem; 
+            border-radius: 0.5rem; /* 모서리 둥글게 */
+            /* 태블릿 뷰에서는 오버레이가 flex-end 대신 center로 동작할 경우, */
+            /* transform: translateY(0)만으로 중앙에 위치하게 조정될 수 있음. */
         }
 
+        .tablet-view .mobile-popup-overlay {
+            align-items: center; /* 팝업을 중앙에 배치 */
+        }
+        
         .tablet-view .popup-main {
             display: flex; /* 2단 분할 활성화 */
             flex-grow: 1; /* 컨테이너의 남은 높이를 모두 차지 */
-            overflow: hidden;
-            min-height: 0;
+            overflow: hidden; /* 내부 스크롤을 위해 필요 */
+            min-height: 0; /* flex 컨테이너에서 내용물 넘침 방지 */
         }
 
         .tablet-view .list-all {
-            width: 50%; 
+            width: 50%; /* 전체 옵션 목록 - 왼쪽 50% */
             border-right: 1px solid #e5e7eb;
             display: flex; 
             flex-direction: column; /* 검색창과 리스트를 세로로 배치 */
@@ -153,7 +159,7 @@
         }
         
         .tablet-view .list-selected {
-            width: 50%;
+            width: 50%; /* 선택된 항목 목록 - 오른쪽 50% */
             background-color: #f9fafb;
             display: flex; 
             flex-direction: column;
@@ -166,7 +172,7 @@
             overflow-y: auto;
         }
         
-        /* 선택된 항목 스타일 */
+        /* 선택된 항목 스타일 (오른쪽 패널) */
         .list-selected .selected-item {
             display: flex;
             justify-content: space-between;
@@ -186,7 +192,7 @@
         }
 
         /* ----------------------------------------------------- */
-        /* 원본 스타일 (검색/리스트/버튼)
+        /* 공통 컴포넌트 스타일 (검색/리스트/버튼) */
         /* ----------------------------------------------------- */
         .search-input-wrapper { position: relative; padding: 1rem; border-bottom: 1px solid #e5e7eb; flex-shrink: 0; }
         .search-input { width: 100%; padding: 0.75rem 2.5rem 0.75rem 1rem; border: 1px solid #d1d5db; border-radius: 0.5rem; outline: none; }
@@ -233,6 +239,7 @@
                 </svg>
             </div>
         </div>
+        
         <div class="mobile-popup-overlay" id="popupOverlay">
             <div class="dropdown-container">
                 
@@ -254,7 +261,7 @@
                     <div class="list-selected" id="listSelectedDiv">
                         <div class="option-list" id="selectedList">
                             <div class="p-4 text-gray-500 text-sm italic" id="selectedListPlaceholder">선택된 항목이 없습니다.</div>
-                        </div>
+                            </div>
                     </div>
                 </div>
 
@@ -268,7 +275,7 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // 항목 개수 증가하여 스크롤 테스트 용이하게 함
+            // 더미 데이터 (항목 개수를 늘려 스크롤 테스트 용이하게 함)
             const data = [
                 { id: 1, label: '멜론라떼' },
                 { id: 2, label: '딸기크리미라떼' },
@@ -285,21 +292,22 @@
                 { id: 13, label: '에스프레소' }
             ];
 
+            // DOM 요소 참조
             const appBody = document.getElementById('appBody');
             const triggerInput = document.getElementById('triggerInput');
             const popupOverlay = document.getElementById('popupOverlay');
             const optionList = document.getElementById('optionList');
-            const selectedList = document.getElementById('selectedList'); // 추가
-            const selectedListPlaceholder = document.getElementById('selectedListPlaceholder'); // 추가
+            const selectedList = document.getElementById('selectedList'); 
+            const selectedListPlaceholder = document.getElementById('selectedListPlaceholder'); 
             const searchInput = document.getElementById('searchInput');
             const clearButton = document.getElementById('clearButton');
             const resetButton = document.getElementById('resetButton');
             const confirmButton = document.getElementById('confirmButton');
-            const mobileButton = document.getElementById('mobileViewButton'); // 추가
-            const tabletButton = document.getElementById('tabletViewButton'); // 추가
+            const mobileButton = document.getElementById('mobileViewButton'); 
+            const tabletButton = document.getElementById('tabletViewButton'); 
             
-            let selectedItems = new Map(); // Set 대신 Map을 사용하여 {id: {id, label}} 형태로 저장
-            let committedItems = new Map(); // 취소(ESC/오버레이 클릭) 시 복원용
+            let selectedItems = new Map(); // 현재 선택된 항목 {id: {id, label}}
+            let committedItems = new Map(); // 확인 버튼 클릭 또는 팝업 열기 시 최종 확정된 항목 (취소 시 복원용)
             let currentView = 'mobile'; // 현재 뷰 상태
 
             // --- 뷰 전환 로직 ---
@@ -308,6 +316,7 @@
                 return currentView === 'tablet';
             }
 
+            // 뷰를 설정하고 UI를 업데이트하는 함수
             function setView(view) {
                 if (view === 'tablet') {
                     appBody.classList.remove('mobile-view');
@@ -333,22 +342,25 @@
                     currentView = 'mobile';
                 }
                 
-                // 뷰 전환 시 팝업이 열려 있었다면 닫기
+                // 뷰 전환 시 팝업이 열려 있었다면 닫기 (새로운 뷰에 맞게 열기 위해)
                 if (popupOverlay.classList.contains('show')) {
                     popupOverlay.classList.remove('show');
                 }
             }
             
+            // 뷰 전환 버튼 이벤트 리스너
             mobileButton.addEventListener('click', () => setView('mobile'));
             tabletButton.addEventListener('click', () => setView('tablet'));
             
             // --- 드롭다운 공통 로직 ---
 
+            // 확인 버튼의 텍스트를 업데이트 (선택된 항목 개수 표시)
             function updateConfirmButton() {
                 const count = selectedItems.size;
                 confirmButton.textContent = `확인 (${count}개)`;
             }
 
+            // 전체 옵션 목록을 렌더링
             function renderOptions(filteredData) {
                 optionList.innerHTML = '';
                 filteredData.forEach(item => {
@@ -368,7 +380,7 @@
                 });
             }
             
-            // [추가] 선택된 항목 목록 렌더링 (태블릿 뷰 전용)
+            // 선택된 항목 목록 렌더링 (태블릿 뷰의 오른쪽 패널 전용)
             function renderSelectedItems() {
                 selectedList.innerHTML = ''; 
                 
@@ -396,7 +408,7 @@
                 });
             }
             
-            // 항목 선택/해제 로직
+            // 항목 선택/해제 토글 로직
             function toggleItem(itemId) {
                 const item = data.find(d => d.id === itemId);
                 
@@ -411,7 +423,7 @@
             
             // 선택 변경 시 UI를 업데이트하는 통합 함수
             function updateUIOnSelectionChange() {
-                // 왼쪽 목록 업데이트 (체크박스 상태)
+                // 왼쪽 목록 업데이트 (체크박스 상태 반영)
                 document.querySelectorAll('.option-item').forEach(itemDiv => {
                     const itemId = parseInt(itemDiv.getAttribute('data-id'));
                     const isChecked = selectedItems.has(itemId);
@@ -427,20 +439,21 @@
                 updateConfirmButton();
             }
 
-            // 초기 렌더링
-            renderOptions(data.slice(0, 7)); // 초기 데이터 7개만 렌더링
+            // 초기 뷰 설정
+            setView('mobile'); // 기본은 모바일 뷰로 시작
+            renderOptions(data.slice(0, 7)); // 초기 데이터 7개만 렌더링 (예시)
             updateConfirmButton();
 
-            // 팝업 열기
+            // 팝업 열기 이벤트
             triggerInput.addEventListener('click', (event) => {
-                // 팝업 열기 전에 현재 선택 항목을 복사해 둠
+                // 팝업 열기 전에 현재 확정된 항목을 임시 저장
                 committedItems = new Map(selectedItems); 
                 
-                searchInput.value = '';
+                searchInput.value = ''; // 검색창 초기화
                 renderOptions(data); // 전체 데이터로 목록 리렌더링
                 
                 if (isTabletView()) {
-                    renderSelectedItems(); 
+                    renderSelectedItems(); // 태블릿 뷰에서 선택된 항목 목록도 렌더링
                 }
                 
                 popupOverlay.classList.add('show');
@@ -463,6 +476,7 @@
                 }
             });
             
+            // ESC 키 입력 시 팝업 닫기 및 복원
             document.addEventListener('keydown', (event) => {
                 if (event.key === 'Escape' && popupOverlay.classList.contains('show')) {
                     // 임시 저장된 항목으로 복원
@@ -476,20 +490,20 @@
                 }
             });
 
-            // 검색 기능
+            // 검색 기능 구현
             searchInput.addEventListener('input', (event) => {
                 const query = event.target.value.toLowerCase();
                 const filteredData = data.filter(item => item.label.toLowerCase().includes(query));
                 renderOptions(filteredData);
             });
             
-            // 검색창 초기화
+            // 검색창 초기화 버튼
             clearButton.addEventListener('click', () => {
                 searchInput.value = '';
                 renderOptions(data);
             });
 
-            // 왼쪽 목록 선택/해제 로직
+            // 왼쪽 목록 항목 선택/해제 이벤트 리스너
             optionList.addEventListener('click', (event) => {
                 const itemDiv = event.target.closest('.option-item');
                 if (!itemDiv) return;
@@ -498,15 +512,15 @@
                 toggleItem(itemId);
             });
             
-            // [추가] 오른쪽 목록 (선택된 항목)에서 제거 버튼 클릭 로직
+            // 오른쪽 목록 (선택된 항목)에서 제거 버튼 클릭 로직 (태블릿 뷰)
             selectedList.addEventListener('click', (event) => {
                 if (event.target.classList.contains('remove-button')) {
                     const itemId = parseInt(event.target.getAttribute('data-id'));
-                    toggleItem(itemId); // 항목 제거
+                    toggleItem(itemId); // 항목 제거 및 UI 업데이트
                 }
             });
 
-            // 초기화 버튼
+            // 초기화 버튼: 모든 선택 항목 해제
             resetButton.addEventListener('click', () => {
                 selectedItems.clear();
                 searchInput.value = '';
@@ -517,12 +531,12 @@
                 updateConfirmButton();
             });
             
-            // 확인 버튼 (팝업 닫기 기능 및 값 전달)
+            // 확인 버튼: 선택 확정, 트리거 입력창 업데이트, 팝업 닫기
             confirmButton.addEventListener('click', () => {
                 const selectedLabels = Array.from(selectedItems.values()).map(item => item.label);
                 
-                triggerInput.value = selectedLabels.join(', ');
-                committedItems = new Map(selectedItems); // 최종 확정
+                triggerInput.value = selectedLabels.join(', '); // 입력창에 선택 항목 표시
+                committedItems = new Map(selectedItems); // 최종 확정 항목으로 저장
                 popupOverlay.classList.remove('show');
             });
             
