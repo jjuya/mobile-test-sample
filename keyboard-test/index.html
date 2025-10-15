@@ -203,9 +203,7 @@
             
             // Fixed UI 보정 및 OSK 애니메이션 대기 (350ms)
             setTimeout(() => {
-                if (!window.visualViewport |
-
-| getKeyboardHeight() === 0) return;
+                if (!window.visualViewport || getKeyboardHeight() === 0) return;
 
                 const inputRect = inputElement.getBoundingClientRect();
                 
@@ -244,7 +242,7 @@
         // 모달 관리 함수
         function openModal() {
             modalContainer.classList.add('is-open');
-            document.body.style.overflow = 'hidden'; // 메인 페이지 스크롤 잠금 [1]
+            document.body.style.overflow = 'hidden'; // 메인 페이지 스크롤 잠금
             handleFixedElementCorrection(); // 모달 높이 보정 즉시 적용
         }
 
