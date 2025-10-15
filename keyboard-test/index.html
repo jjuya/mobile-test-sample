@@ -189,6 +189,68 @@
             }
         }
 
+
+        function handleInputFocus(event) {
+            // 1. Fixed UI 위치 보정 시작 (키보드 높이 감지)
+            // 키보드가 올라오면서 Fixed UI의 위치가 조정될 시간을 줍니다.
+            setTimeout(handleFixedElementCorrection, 50);
+
+            const targetId = event.target.id;
+
+            // 스크롤 가능한 콘텐츠 내 입력 필드 (#last_input)만 스크롤 보정을 실행합니다.
+            if (targetId === 'last_input') {
+                scrollToInputIntoView(event.target, false);
+            }
+
+            statusDisplay.textContent = '입력 필드 포커스됨. 키보드 감지 중...';
+        }
+
+        /**
+         * 입력 필드가 키보드 위에 보이도록 Layout/모달 스크롤 위치를 정밀하게 보정합니다.
+         * 이 로직은 scrollIntoView()의 신뢰성 문제(요소가 이미 보인다고 오판하여 스크롤 안 함)를 우회합니다.
+         * @param {HTMLElement} inputElement - 스크롤 보정 대상 입력 필드
+         * @param {boolean} isModalInput - 모달 내부 입력 필드인지 여부
+         */
+        function scrollToInputIntoView(inputElement, isModalInput = false) {
+            setTimeout(() => {
+                if (!window.visualViewport || getKeyboardHeight() === 0) return;
+
+                const inputRect = inputElement.getBoundingClientRect();
+
+                // 모달 내부가 아닐 경우, 하단 Fixed UI의 높이를 고려
+                const bottomFixedElementHeight = isModalInput ? 0 : bottomFixedElementHeight = fixedContainer.offsetHeight;
+
+                // 1. Visual Viewport 내에서 입력 필드의 이상적인 '하단' 위치 계산:
+                // 목표 위치 = VV 높이 - 키보드 높이 - Fixed UI 높이 - 안전 여백
+                const targetInputBottomVV = window.visualViewport.height - getKeyboardHeight() - bottomFixedElementHeight - safetyMargin;
+
+                // 2. 현재 입력 필드의 '하단' 위치 (Visual Viewport 기준)
+                const currentInputBottomVV = inputRect.bottom;
+
+                // 3. 목표 위치에 도달하기 위해 필요한 스크롤 거리 계산
+                // 현재 위치(currentInputBottomVV)가 목표 위치(targetInputBottomVV)보다 크면, 스크롤이 필요합니다.
+                const distanceToScroll = currentInputBottomVV - targetInputBottomVV;
+
+                if (distanceToScroll > 0) {
+                    if (!isModalInput) {
+                        const newScrollY = window.scrollY + distanceToScroll;
+
+                        window.scrollTo({
+                            top: newScrollY,
+                            behavior: 'smooth'
+                        })
+                    } else {
+                        const modalContent = document.getElementById('modal-content');
+
+                        if (modalContent) {
+                            modalContent.scrollTop += distanceToScroll;
+                        }
+                    }
+                }
+            }, 250)
+
+        }
+
         if (window.visualViewport) {
             // Visual Viewport 이벤트: 키보드 크기/스크롤 변화 감지 [2]
             window.visualViewport.addEventListener('resize', handleFixedElementCorrection);
@@ -198,7 +260,9 @@
             document.addEventListener('scroll', handleFixedElementCorrection);
         }
 
-         // 초기 로드 시 스크롤 위치 초기화 및 Fixed UI 초기 보정
+        allInputs.forEach(input => input.addEventListener('focus', handleInputFocus));
+
+        // 초기 로드 시 스크롤 위치 초기화 및 Fixed UI 초기 보정
         window.scrollTo(0, 0);
         handleFixedElementCorrection();
     </script>
