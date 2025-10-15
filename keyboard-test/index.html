@@ -23,6 +23,7 @@
             right: 0;
             transition: none; 
             z-index: 50;
+            will-change: transform; /* GPU 가속 유도 */
         }
 
         /* 키보드 유무 상태 메시지 - 상단 고정 유지 (JS로 위치 보정 대상) */
@@ -34,6 +35,7 @@
             z-index: 60;
             font-size: 0.875rem;
             transition: none; 
+            will-change: transform; /* GPU 가속 유도 */
         }
     </style>
 </head>
@@ -49,7 +51,7 @@
         <div class="space-y-4">
             <div class="bg-white p-4 rounded-xl shadow-md border border-gray-100">
                 <h2 class="font-semibold text-lg text-indigo-600">섹션 1: Fixed UI 안정화 로직</h2>
-                <p class="text-sm mt-1">브라우저 기본 동작(`resizes-visual`)에서 JS 보정(`keyboardHeight + offsetTop`)을 통해 Fixed UI를 VV에 앵커링합니다.</p>
+                <p class="text-sm mt-1">픽셀 오차를 최소화하고 `keyboardHeight`와 `offsetTop` 보정 공식을 적용합니다.</p>
             </div>
             
             <div class="h-96 bg-gray-50 flex items-center justify-center rounded-xl shadow-inner">
@@ -92,7 +94,7 @@
             return Math.max(0, Math.floor(keyboardHeight));
         }
 
-        // Fixed UI 위치 보정 및 상태 업데이트
+        // Fixed UI 위치 보정 및 상태 업데이트 (핵심 로직)
         function handleFixedElementCorrection() {
             if (!window.visualViewport) return;
 
@@ -100,16 +102,17 @@
             // Layout Viewport에 대한 Visual Viewport의 오프셋 (스크롤 시 변경됨)
             const offsetTop = window.visualViewport.offsetTop?? 0; 
             
-            // 1. 상단 Fixed UI (#status) 보정: offsetTop만큼 아래로 내려 VV 상단에 앵커링
+            // 1. 상단 Fixed UI (#status) 보정
             if (statusDisplay) {
-                statusDisplay.style.transform = `translateY(${offsetTop}px)`;
+                // Math.floor를 적용하여 픽셀 오차 최소화
+                statusDisplay.style.transform = `translateY(${Math.floor(offsetTop)}px)`;
             }
 
             // 2. 하단 Fixed UI (#fixed-container) 보정
             if (fixedContainer) {
                 if (keyboardHeight > 0) {
-                    // 키보드 높이 + LV 스크롤 오프셋을 합쳐 LV 스크롤을 상쇄하고 키보드 위에 고정
-                    const totalTransformBottom = keyboardHeight + offsetTop; 
+                    // [핵심 수정] 픽셀 오차를 줄이기 위해 offsetTop에 Math.floor() 적용
+                    const totalTransformBottom = keyboardHeight + Math.floor(offsetTop); 
                     fixedContainer.style.transform = `translateY(-${totalTransformBottom}px)`;
                     
                     statusDisplay.classList.replace('bg-indigo-500', 'bg-red-500');
@@ -143,7 +146,7 @@
                 const distanceToScroll = currentInputBottomVV - targetInputBottomVV;
 
                 if (distanceToScroll > 0) {
-                    // LV 스크롤 실행
+                    // Layout Viewport 스크롤 실행
                     const newScrollY = window.scrollY + distanceToScroll;
                     
                     window.scrollTo({
@@ -158,9 +161,11 @@
         
         // Visual Viewport 및 Layout 스크롤 이벤트 리스너 등록
         if (window.visualViewport) {
+            // VV 크기/위치 변화 감지 (키보드/줌/스크롤)
             window.visualViewport.addEventListener('resize', handleFixedElementCorrection);
             window.visualViewport.addEventListener('scroll', handleFixedElementCorrection);
             
+            // LV 스크롤 변화 감지 (Fixed UI 밀림 방지 보조)
             document.addEventListener('scroll', handleFixedElementCorrection);
 
             function handleFocus(event) {
