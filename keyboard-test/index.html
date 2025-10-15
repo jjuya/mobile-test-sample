@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>모바일 키보드 Fixed UI 테스트 (VisualViewport 반영)</title>
-    <!-- Tailwind CSS 로드 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* 'Inter' 폰트 사용 */
@@ -42,55 +41,42 @@
 </head>
 <body>
 
-    <!-- 키보드 상태 표시 (디버깅/보고용) -->
     <div id="status" class="bg-indigo-500 text-white p-2 text-center shadow-lg">
         Visual Viewport 상태 모니터링 중...
     </div>
     
-    <!-- 메인 스크롤 콘텐츠 -->
     <main class="container mx-auto p-4 flex-grow">
         <h1 class="text-3xl font-bold mb-4 text-gray-800">스크롤 가능한 콘텐츠 영역</h1>
         <p class="mb-2 text-gray-600">이 영역은 Layout Viewport 내에서 자유롭게 스크롤됩니다.</p>
         <div class="space-y-4">
-            <!-- 더미 콘텐츠 생성 (스크롤 유발) -->
             <div class="bg-white p-4 rounded-xl shadow-md border border-gray-100">
                 <h2 class="font-semibold text-lg text-indigo-600">섹션 1: Viewport 문제의 이해</h2>
                 <p class="text-sm mt-1">모바일에서 키보드가 올라오면 Visual Viewport가 축소됩니다. Fixed 요소는 이 축소된 영역에서 벗어나 키보드 아래에 가려지게 됩니다.</p>
             </div>
-            <div class="bg-white p-4 rounded-xl shadow-md border border-gray-100">
-                <h2 class="font-semibold text-lg text-indigo-600">섹션 2: JS 수동 조정의 필요성</h2>
-                <p class="text-sm mt-1">브라우저별 Layout Viewport 동작이 달라 크로스 브라우징 호환성 확보를 위해 Visual Viewport API를 사용한 JS 수동 조정이 현재 가장 신뢰할 수 있는 방법입니다.</p>
-            </div>
-            
-            <!-- 스크롤을 많이 만들기 위한 반복 콘텐츠 -->
             <div class="h-96 bg-gray-50 flex items-center justify-center rounded-xl shadow-inner">
                 <p class="text-gray-500">긴 스크롤을 위한 더미 공간 (1)</p>
             </div>
             <div class="bg-white p-4 rounded-xl shadow-md border border-gray-100">
                 <h2 class="font-semibold text-lg text-indigo-600">섹션 3: Fixed 요소의 이동</h2>
-                <p class="text-sm mt-1">하단의 Fixed UI는 키보드 높이만큼 transform: translateY(-Height)를 사용하여 GPU 가속으로 부드럽게 이동합니다.</p>
+                <p class="text-sm mt-1">하단의 Fixed UI는 키보드 높이와 스크롤 위치를 반영하여 정확히 이동합니다.</p>
             </div>
             <div class="h-96 bg-gray-50 flex items-center justify-center rounded-xl shadow-inner">
                 <p class="text-gray-500">긴 스크롤을 위한 더미 공간 (2)</p>
             </div>
             <div class="bg-white p-4 rounded-xl shadow-md border border-gray-100">
                 <h2 class="font-semibold text-lg text-indigo-600">섹션 4: 입력 필드</h2>
-                <p class="text-sm mt-1">여기에 포커스 시 하단 Fixed UI가 키보드 위로 올라가야 합니다.</p>
+                <p class="text-sm mt-1">여기에 포커스 시 $`window.scrollTo()`를 이용한 정밀 보정이 실행됩니다.</p>
             </div>
             
-            <!-- 가장 아래에 있는 Input Field -->
             <div class="p-4 bg-yellow-100 rounded-xl">
                 <label for="last_input" class="block mb-2 font-medium text-gray-700">마지막 입력 필드 (화면 하단 근접)</label>
                 <input type="text" id="last_input" placeholder="여기에 입력 시 키보드에 가려질 위험이 큽니다." class="w-full p-3 border-2 border-yellow-400 rounded-lg focus:outline-none focus:ring-4 focus:ring-yellow-300">
             </div>
 
-            <div class="h-32"></div> <!-- 하단 여백 -->
-        </div>
+            <div class="h-32"></div> </div>
     </main>
 
-    <!-- Fixed UI 컨테이너 (JS로 위치 보정 대상) -->
     <div id="fixed-container" class="bg-white border-t-4 border-indigo-500 shadow-2xl p-4">
-        <!-- 핵심 Fixed UI 요소 (댓글 버튼, 전송 버튼 등) -->
         <div class="fixed-ui-element flex justify-between items-center mb-3">
             <h3 class="text-xl font-bold text-indigo-700">Fixed Bottom UI</h3>
             <button class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-150">
@@ -98,7 +84,6 @@
             </button>
         </div>
         
-        <!-- 사용자의 주요 입력 필드 (포커스 발생 지점) -->
         <input type="text" id="input-field" placeholder="여기에 입력하세요. (키보드 테스트용)" class="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
     </div>
 
@@ -107,52 +92,37 @@
         const inputField = document.getElementById('input-field');
         const lastInputField = document.getElementById('last_input');
         const statusDisplay = document.getElementById('status');
-        
-        // 1. Visual Viewport API 지원 여부 확인
-        if (window.visualViewport) {
-            statusDisplay.textContent = 'Visual Viewport API 지원 확인됨.';
-            
-            // 2. Visual Viewport Resize 및 Scroll 이벤트 리스너 등록
-            // resize: 키보드 열림/닫힘 감지 (높이 변화)
-            // scroll: 키보드 열린 상태에서 사용자 스크롤 감지 (위치 변화)
-            window.visualViewport.addEventListener('resize', handleKeyboardResize);
-            window.visualViewport.addEventListener('scroll', handleKeyboardResize);
-            
-            // 3. Input 필드 포커스/블러 이벤트 처리
-            inputField.addEventListener('focus', handleFocus);
-            inputField.addEventListener('blur', handleBlur);
-            lastInputField.addEventListener('focus', handleFocus);
-            lastInputField.addEventListener('blur', handleBlur);
+        const safetyMargin = 15; // 입력 필드와 Fixed UI 사이에 확보할 최소 여백 (px)
 
-        } else {
-            // API 미지원 시 경고 메시지 표시
-            statusDisplay.classList.replace('bg-indigo-500', 'bg-red-700');
-            statusDisplay.textContent = 'Visual Viewport API를 지원하지 않아 JS 조정이 어렵습니다.';
-        }
-        
         /**
-         * 키보드 등장/퇴장 또는 스크롤 시 실행되는 핵심 로직 (resize 및 scroll 이벤트)
+         * OSK가 차지하는 높이를 계산합니다.
+         * @returns {number} 키보드 높이 (CSS 픽셀)
          */
-        function handleKeyboardResize() {
-            // [방어 코드] visualViewport가 없거나 height 값이 유효하지 않으면 즉시 종료
-            if (!window.visualViewport || typeof window.visualViewport.height !== 'number') return;
+        function getKeyboardHeight() {
+            // Layout Viewport (window.innerHeight)와 Visual Viewport (window.visualViewport.height)의 차이
+            // 이 차이가 OSK의 높이가 됩니다.
+            const keyboardHeight = window.innerHeight - (window.visualViewport?.height?? window.innerHeight);
+            return Math.max(0, Math.floor(keyboardHeight));
+        }
 
-            const currentVisualHeight = window.visualViewport.height;
-            const currentInnerHeight = window.innerHeight;
-            
-            // 키보드 높이 계산 (Layout - Visual)
-            let keyboardHeight = currentInnerHeight - currentVisualHeight;
-            keyboardHeight = Math.max(0, Math.floor(keyboardHeight));
+        /**
+         * Fixed UI 요소의 위치를 OSK 및 스크롤에 맞춰 보정합니다.
+         */
+        function handleFixedElementCorrection() {
+            // [방어 코드] VisualViewport API가 없으면 실행하지 않음
+            if (!window.visualViewport) return;
+
+            const keyboardHeight = getKeyboardHeight();
             
             if (keyboardHeight > 0) {
-                // [안전성 강화] scrollTop이 null 또는 undefined일 경우 0을 사용 (undefined 에러 방지)
-                const scrollOffset = window.visualViewport.scrollTop ?? 0;
+                // Visual Viewport의 스크롤 위치 (Layout Viewport에 대한 VV의 오프셋)
+                // 키보드가 나타난 상태에서 사용자가 줌/스크롤을 할 때 이 값이 변합니다.
+                const scrollOffset = window.visualViewport.scrollTop?? 0;
                 
-                // [핵심 로직] 키보드 높이 + Visual Viewport의 스크롤 위치를 더해 보정
-                // 이 로직 덕분에 스크롤 중에도 fixed-container가 키보드 상단에 고정됩니다.
+                // [핵심 로직] Fixed UI를 (키보드 높이 + VV 스크롤 오프셋)만큼 위로 이동
                 const totalTransform = keyboardHeight + scrollOffset; 
                 
-                // GPU 가속을 이용한 위치 보정 (Transition이 없으므로 즉시 고정됨)
+                // transform: translateY를 사용하여 GPU 가속으로 위치 보정 [2]
                 fixedContainer.style.transform = `translateY(-${totalTransform}px)`;
 
                 statusDisplay.classList.replace('bg-indigo-500', 'bg-red-500');
@@ -167,40 +137,83 @@
         }
         
         /**
-         * Input 포커스 시 처리 (키보드 등장 유도 및 초기 보정)
+         * 입력 필드가 Fixed UI 위에 보이도록 Layout Viewport를 정밀하게 스크롤합니다.
+         * ScrollIntoView의 신뢰성 문제(침묵 실패)를 우회하기 위한 수동 계산입니다. [1]
+         * @param {HTMLElement} inputElement - 스크롤 보정 대상 입력 필드
          */
-        function handleFocus(event) {
-            const focusedElement = event.target;
+        function scrollToInputIntoView(inputElement) {
             
-             // 1. Fixed UI 위치 보정 시작 (키보드 높이 감지)
-             // Fixed UI가 키보드 위로 즉시 이동할 수 있도록 50ms 지연 후 보정 시작
+            // 키보드 등장 및 Fixed UI 위치 조정이 완료될 시간을 충분히 부여 (250ms)
             setTimeout(() => {
-                handleKeyboardResize();
-            }, 50);
+                if (!window.visualViewport |
 
-             // 2. 스크롤 가능한 영역의 Input (#last_input)을 클릭했다면, 수동 스크롤 이동
-            if (focusedElement.id === 'last_input' && window.visualViewport) {
-                 // Fixed bar가 위치를 잡을 시간을 준 후 (200ms) 스크롤 수행
-                 // 'end' 옵션은 요소를 뷰포트 하단에 최대한 가깝게 위치시킵니다.
-                setTimeout(() => {
-                     // 브라우저의 자동 스크롤을 무시하고 강제로 뷰포트 안으로 넣습니다.
-                    focusedElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
-                }, 200); 
+| getKeyboardHeight() === 0) return;
+
+                const inputRect = inputElement.getBoundingClientRect();
+                const fixedHeight = fixedContainer.offsetHeight;
+
+                // 1. Visual Viewport 내에서 입력 필드의 이상적인 '하단' 위치 계산:
+                // VV 높이 - Fixed UI 높이 - 안전 여백
+                const targetInputBottomVV = window.visualViewport.height - fixedHeight - safetyMargin;
+                
+                // 2. 현재 입력 필드의 '하단' 위치 (Visual Viewport 기준)
+                const currentInputBottomVV = inputRect.bottom;
+                
+                // 3. 목표 위치에 도달하기 위해 필요한 스크롤 거리 계산
+                // 현재 위치가 목표 위치보다 아래에 있다면 양수가 나와 스크롤이 필요합니다.
+                const distanceToScroll = currentInputBottomVV - targetInputBottomVV;
+
+                if (distanceToScroll > 0) {
+                    // 4. Layout Viewport의 새로운 스크롤 Y 좌표를 계산하여 스크롤 실행 [2]
+                    const newScrollY = window.scrollY + distanceToScroll;
+                    
+                    window.scrollTo({
+                        top: newScrollY,
+                        behavior: 'smooth'
+                    });
+                }
+                
+            }, 250); 
+        }
+
+        // ----------------------------------------------------
+        // 이벤트 리스너 등록
+        // ----------------------------------------------------
+
+        if (window.visualViewport) {
+            statusDisplay.textContent = 'Visual Viewport API 지원 확인됨.';
+            
+            // Visual Viewport 이벤트를 사용하여 Fixed UI 위치를 조정
+            window.visualViewport.addEventListener('resize', handleFixedElementCorrection);
+            window.visualViewport.addEventListener('scroll', handleFixedElementCorrection);
+            
+            // Layout Viewport 스크롤 중에도 Fixed UI가 고정된 것처럼 보이도록 보조
+            document.addEventListener('scroll', handleFixedElementCorrection);
+
+            // Input 필드 포커스 이벤트 처리
+            function handleFocus(event) {
+                // 1. Fixed UI 위치 보정 시작 (키보드 높이 감지)
+                setTimeout(handleFixedElementCorrection, 50);
+
+                // 2. 스크롤 가능한 영역의 Input (#last_input)을 클릭했다면, 정밀 스크롤 이동
+                if (event.target.id === 'last_input') {
+                    // ScrollIntoView 대신 수동 계산 로직 실행
+                    scrollToInputIntoView(event.target);
+                }
+                statusDisplay.textContent = '입력 필드 포커스됨. 키보드 감지 중...';
             }
 
-            statusDisplay.textContent = '입력 필드 포커스됨. 키보드 감지 중...';
+            inputField.addEventListener('focus', handleFocus);
+            lastInputField.addEventListener('focus', handleFocus);
+        
+        } else {
+            statusDisplay.classList.replace('bg-indigo-500', 'bg-red-700');
+            statusDisplay.textContent = 'Visual Viewport API를 지원하지 않아 JS 조정이 어렵습니다.';
         }
 
-        /**
-         * Input 블러 시 처리
-         */
-        function handleBlur() {
-            // 키보드가 닫히면 visualViewport resize 이벤트가 발생하여 handleKeyboardResize를 호출하고 위치를 초기화합니다.
-        }
-
-        // 초기 로드 시 스크롤을 맨 위로 이동 (테스트 편의를 위해)
+        // 초기 로드 시 Fixed UI의 위치를 한 번 보정하고, 스크롤을 맨 위로 이동
         window.scrollTo(0, 0);
-
+        handleFixedElementCorrection();
     </script>
 </body>
 </html>
