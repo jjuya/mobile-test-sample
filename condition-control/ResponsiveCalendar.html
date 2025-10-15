@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>반응형 달력 모달 (뷰 전환 지원)</title>
+    <title>달력 입력창 컴포넌트</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* ----------------------------------------------------- */
@@ -14,20 +14,21 @@
             font-family: 'Inter', sans-serif;
             background-color: #5c6470;
             display: flex;
-            flex-direction: column; /* 버튼과 프레임을 세로로 배치 */
             justify-content: center;
-            align-items: center;
+            align-items: center; 
             min-height: 100vh;
-            padding: 2rem 1rem;
+            padding: 1rem;
+            flex-direction: column; 
         }
 
+        /* 뷰 전환 버튼 컨테이너 */
         .view-controls {
             margin-bottom: 1.5rem;
             display: flex;
             gap: 1rem;
         }
 
-        /* 디바이스 프레임 공통 스타일 */
+        /* 디바이스 프레임 공통 스타일 (모바일 기본) */
         .phone-frame {
             position: relative;
             width: 375px; /* 모바일 뷰 기본 너비 */
@@ -39,15 +40,15 @@
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            transition: all 0.3s ease-in-out; /* 너비/높이 전환 애니메이션 */
+            transition: all 0.3s ease-in-out;
         }
 
         /* 태블릿 뷰 프레임 오버라이드 */
         .tablet-view .phone-frame {
-            width: 768px; /* 태블릿 뷰 너비로 확장 */
+            width: 768px; /* 태블릿 뷰 너비 */
             height: 667px; 
         }
-
+        
         .phone-content {
             padding: 1.5rem;
             flex-grow: 1;
@@ -56,9 +57,9 @@
             align-items: center;
             gap: 1.5rem;
         }
-        
+
         /* ----------------------------------------------------- */
-        /* 팝업 공통 스타일 (모바일: 하단 슬라이드 업, 태블릿: 중앙 모달) */
+        /* 팝업 오버레이 및 컨테이너 스타일 (모바일: 하단 슬라이드 업) */
         /* ----------------------------------------------------- */
         .mobile-popup-overlay {
             position: absolute;
@@ -69,53 +70,141 @@
             background-color: rgba(0, 0, 0, 0.5);
             display: flex;
             justify-content: center;
-            align-items: flex-end; /* 모바일: 하단에 배치 */
+            align-items: flex-end; /* 모바일: 하단 정렬 */
             opacity: 0;
             visibility: hidden;
             transition: opacity 0.3s ease-in-out;
             z-index: 1000;
         }
-
         .mobile-popup-overlay.show {
             opacity: 1;
             visibility: visible;
         }
-
-        .calendar-container {
+        .mobile-popup-content {
+            position: relative;
             width: 100%;
-            max-width: 400px; /* 모바일 뷰 최대 너비 */
             background-color: #fff;
             border-top-left-radius: 1rem;
             border-top-right-radius: 1rem;
             box-shadow: 0 -10px 20px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-            transform: translateY(100%); /* 하단 숨김 */
+            transform: translateY(100%); /* 초기 상태: 하단 숨김 */
             transition: transform 0.3s ease-in-out;
+            overflow: hidden;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .mobile-popup-overlay.show .mobile-popup-content {
+            transform: translateY(0); /* 팝업 표시 시: 위로 슬라이드 */
         }
 
-        .mobile-popup-overlay.show .calendar-container {
-            transform: translateY(0); /* 슬라이드 업 */
+        /* ----------------------------------------------------- */
+        /* 달력 렌더링 영역 스타일 */
+        /* ----------------------------------------------------- */
+        
+        /* 2단 달력 레이아웃 (태블릿 FromTo 전용) */
+        .calendar-multi-view {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr); /* 50% / 50% 분할 */
+            gap: 1rem;
+            padding: 1rem;
+            overflow-y: auto; 
+        }
+        .calendar-container {
+            border-radius: 0.5rem;
+            display: flex;
+            flex-direction: column;
+        }
+        /* 싱글 달력 스타일 */
+        .calendar-single-view {
+            padding: 0 1rem;
+        }
+
+        /* ----------------------------------------------------- */
+        /* Month/Year 선택 그리드 스타일 (Simplified View) */
+        /* ----------------------------------------------------- */
+        .simplified-options .selected {
+            background-color: #3b82f6;
+            color: #fff;
+            font-weight: bold;
+        }
+        /* 기간 선택 중간 범위 (Month/Year FromTo) */
+        .simplified-options .selected-range {
+            background-color: #93c5fd;
+            color: #fff;
+            border-radius: 0;
+        }
+        /* 기간 선택 시작일 (Month/Year FromTo) */
+        .simplified-options .start-of-range {
+            background: #66A3FF !important;
+            border: 1px solid #0066FF !important;
+            border-top-left-radius: 0.5rem;
+            border-bottom-left-radius: 0.5rem;
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
+            color: #fff !important;
+            font-weight: bold;
+        }
+        /* 기간 선택 종료일 (Month/Year FromTo) */
+        .simplified-options .end-of-range {
+            background: #0066FF !important;
+            border: 1px solid #0066FF !important;
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
+            border-top-right-radius: 0.5rem;
+            border-bottom-right-radius: 0.5rem;
+            color: #fff !important;
+            font-weight: bold;
+        }
+        /* 단일 선택 또는 시작=종료일 */
+        .simplified-options .single-day-range {
+            border-radius: 0.5rem;
         }
         
         /* ----------------------------------------------------- */
-        /* [태블릿 뷰] 오버라이드 (중앙 모달 및 크기 조정) */
+        /* 입력창 및 아이콘 스타일 */
         /* ----------------------------------------------------- */
-        .tablet-view .mobile-popup-overlay {
-            align-items: center; /* 태블릿: 팝업을 중앙에 배치 */
+        .calendar-input-wrapper {
+            position: relative;
+            width: 100%;
         }
 
-        .tablet-view .calendar-container {
-            max-width: 600px; /* 태블릿 뷰 최대 너비 */
-            height: auto; /* 내용에 맞춰 높이 자동 조정 */
-            border-radius: 0.5rem; /* 모서리 둥글게 */
+        .input-trigger {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 2.5rem; /* 캘린더 아이콘 공간 확보 */
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            background-color: #fff;
+            transition: border-color 0.2s;
+            outline: none;
+            text-align: left;
         }
         
-        .tablet-view .mobile-popup-overlay.show .calendar-container {
-             /* 태블릿 뷰에서는 중앙 배치만 하면 되므로 transform은 그대로 둠 */
+        .input-trigger.active, .input-trigger:focus {
+            border-color: #3b82f6; /* 활성화 시 파란색 테두리 */
+        }
+
+        .calendar-icon {
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6b7280;
+        }
+        
+        .clear-icon {
+            position: absolute;
+            right: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6b7280;
+            cursor: pointer;
+            display: none;
         }
 
         /* ----------------------------------------------------- */
-        /* 달력 컴포넌트 스타일 */
+        /* Day/Week 달력 그리드 스타일 */
         /* ----------------------------------------------------- */
         .calendar-header {
             display: flex;
@@ -123,108 +212,240 @@
             align-items: center;
             padding: 1rem;
             border-bottom: 1px solid #e5e7eb;
-            font-size: 1.125rem;
+            font-weight: bold;
+            color: #374151;
+        }
+        
+        /* 요일 표시 영역 (월요일 시작) */
+        .calendar-weekdays {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            text-align: center;
+            font-size: 0.875rem;
+            color: #6b7280;
+            padding: 0.5rem 0;
+        }
+        
+        /* 주차 번호 표시 시 그리드 컬럼 추가 */
+        .calendar-weekdays.with-week-numbers {
+            grid-template-columns: 1fr repeat(7, 1fr);
+        }
+        
+        /* 주차 번호 헤더 */
+        .calendar-weekdays .week-column {
+            color: #374151;
+            font-weight: 600;
+        }
+        
+        /* 날짜 그리드 */
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            text-align: center;
+            padding-bottom: 1rem;
+        }
+        
+        .calendar-grid.with-week-numbers {
+            grid-template-columns: 1fr repeat(7, 1fr);
+        }
+
+        /* 날짜 셀 및 주차 번호 셀 공통 스타일 */
+        .calendar-day, .calendar-week-number {
+            padding: 0.75rem 0.5rem;
+            cursor: pointer;
+            border-radius: 50%;
+            transition: background-color 0.2s;
+            position: relative;
+        }
+
+        .calendar-day:hover:not(.empty-day):not(.selected-range),
+        .calendar-week-number:hover {
+            background-color: #e5e7eb;
+        }
+        
+        /* 달력의 빈 셀 숨김 */
+        .empty-day {
+            visibility: hidden;
+        }
+        
+        /* 현재 달이 아닌 날짜 */
+        .outside-month {
+            color: #d1d5db;
+        }
+
+        /* 단일 선택된 날짜 (Day 모드) */
+        .selected {
+            background-color: #3b82f6;
+            border: 1px solid #3b82f6;
+            color: #fff;
             font-weight: 600;
         }
 
-        .month-year-display {
-            font-size: 1.25rem;
-            font-weight: 700;
-        }
-
-        .day-names {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            text-align: center;
-            padding: 0.5rem 0;
-            background-color: #f9fafb;
-            font-size: 0.875rem;
-            color: #4b5563;
-        }
-        .day-names > div {
-            padding: 0.5rem 0;
-        }
-
-        .days-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            text-align: center;
-            padding: 0.5rem;
-        }
-
-        /* 개별 날짜 버튼 스타일 */
-        .day-cell {
-            padding: 0.25rem;
-            cursor: pointer;
-        }
-        .day-button {
-            width: 2.25rem;
-            height: 2.25rem;
-            line-height: 2.25rem;
-            border-radius: 9999px; /* 원형 */
-            font-weight: 500;
-            display: inline-block;
-            transition: background-color 0.1s;
+        /* 기간 선택 범위 내 날짜 (Day FromTo) */
+        .selected-range {
+            background-color: #E6F0FF;
+            color: #003D99;
+            border-radius: 0; /* 범위 내는 사각형 배경 */
         }
         
-        /* 현재 월에 속하지 않는 날짜 */
-        .day-cell.other-month .day-button {
-            color: #9ca3af;
+        /* 주차 번호 셀 스타일 */
+        .calendar-week-number {
+            font-weight: 600;
         }
 
-        /* hover 효과 */
-        .day-cell:not(.selected) .day-button:not(.other-month):hover {
-            background-color: #e5e7eb;
+        /* 주차 범위 내 주차 번호 (WeekFromTo) */
+        .selected-week {
+            background-color: #dbeafe;
+            border-radius: 0; 
+            color: #1e40af; 
         }
 
-        /* 오늘 날짜 */
-        .day-cell.today .day-button {
-            color: #3b82f6;
-            font-weight: 700;
-            border: 1px solid #3b82f6;
+        /* WeekFromTo 범위 시작 주차 번호 (상단 라운딩) */
+        .calendar-week-number.start-week-of-range {
+            background: #66A3FF !important;;
+            border: 1px solid #0066FF !important;
+            border-top-left-radius: 50%; 
+            border-top-right-radius: 50%; 
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+            color: #fff !important;
+            font-weight: bold;
+        }
+        
+        /* WeekFromTo 범위 종료 주차 번호 (하단 라운딩) */
+        .calendar-week-number.end-week-of-range {
+            background: #0066FF !important;
+            border: 1px solid #0066FF !important;
+            border-top-left-radius: 0; 
+            border-top-right-radius: 0; 
+            border-bottom-left-radius: 50%;
+            border-bottom-right-radius: 50%;
+            color: #fff !important;
+            font-weight: bold;
         }
 
-        /* 선택된 날짜 */
-        .day-cell.selected .day-button {
-            background-color: #3b82f6;
+        /* 단일 주 선택 주차 번호 */
+        .calendar-week-number.single-day-range {
+            background: #0066FF;
+            border: 1px solid #0066FF;
+            border-radius: 50%;
             color: #fff;
-            font-weight: 700;
-            border: 1px solid #3b82f6;
+            font-weight: bold;
+        }
+        
+        /* Week 선택 모드일 때 날짜 셀은 선택 스타일 미적용 */
+        .week-range .calendar-day {
+            border-radius: 50%; /* 기존 day 스타일 유지 */
+        }
+
+        /* DayFromTo 기간 선택 시작 날짜 (좌측 라운딩) */
+        .day-fromto-range .calendar-day.start-of-range {
+            background: #66A3FF !important;
+            border: 1px solid #0066FF !important;
+            border-top-left-radius: 50%; 
+            border-bottom-left-radius: 50%; 
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
+            color: #fff !important;
+        }
+
+        /* DayFromTo 기간 선택 종료 날짜 (우측 라운딩) */
+        .day-fromto-range .calendar-day.end-of-range {
+            background: #0066FF !important;
+            border: 1px solid #0066FF !important;
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
+            border-top-right-radius: 50%; 
+            border-bottom-right-radius: 50%; 
+            color: #fff !important;
+        }
+        
+        /* DayFromTo 단일 날짜 선택 (시작일=종료일) */
+        .day-fromto-range .calendar-day.single-day-range {
+            border-radius: 50%;
         }
 
         /* 하단 액션 버튼 영역 */
         .action-buttons {
-            padding: 1rem;
-            border-top: 1px solid #e5e7eb;
             display: flex;
+            border-top: 1px solid #e5e7eb;
+            padding: 1rem;
             gap: 0.5rem;
-            justify-content: flex-end; /* 오른쪽 정렬 */
         }
-        .action-button { 
-            padding: 0.5rem 1rem; 
-            border-radius: 0.5rem; 
-            font-weight: 600; 
-            cursor: pointer; 
-            transition: background-color 0.2s; 
+
+        /* 확인 버튼 공통 스타일 */
+        .action-button {
+            flex-grow: 1;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: background-color 0.2s;
+            cursor: pointer;
         }
-        .action-button.cancel { 
-            background-color: #f3f4f6; 
-            color: #4b5563; 
+
+        .action-button.confirm {
+            background-color: #3b82f6;
+            color: #fff;
         }
-        .action-button.cancel:hover { 
-            background-color: #e5e7eb; 
+
+        .action-button.confirm:hover {
+            background-color: #2563eb;
         }
-        .action-button.confirm { 
-            background-color: #3b82f6; 
-            color: #fff; 
+        
+        /* 월/연도 선택 버튼 (Simplified View) */
+        .simplified-option {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            border-radius: 0.5rem;
+            transition: background-color 0.2s;
+            text-align: center;
         }
-        .action-button.confirm:hover { 
-            background-color: #2563eb; 
+        
+        .simplified-option:hover {
+            background-color: #f3f4f6;
+        }
+
+        /* 현재 날짜 표시 (Day/DayFromTo) */
+        .today-mark {
+            border: 1px solid #8AEFFF; 
+            border-radius: 50%;
+            background-color: #E2FBFF !important;
+            color: #1f2937 !important;
+            font-weight: 600;
+        }
+
+        .today-mark.selected {
+            border-radius: 0; 
+        }
+
+        /* 현재 주차 표시 (Week Number 셀) */
+        .current-week-mark {
+            border: 1px solid #8AEFFF; 
+            border-radius: 50%;
+            background-color: #E2FBFF;
+            color: #003D99;
+        }
+
+        .current-week-mark.selected-week {
+            border-radius: 0;
+        }
+
+        /* 현재 월/연도 표시 (Simplified View) */
+        .simplified-option.current-mark {
+            border: 1px solid #8AEFFF; 
+            background-color: #E2FBFF;
+            color: #003D99;
+        }
+
+        .simplified-option.current-mark.selected {
+            background-color: #E2FBFF;
+            color: #003D99;
+            border-color: #8AEFFF;
         }
     </style>
 </head>
 <body id="appBody" class="mobile-view"> 
-
+    
     <div class="view-controls">
         <button id="mobileViewButton" class="px-4 py-2 rounded-md font-semibold text-white bg-blue-500 hover:bg-blue-600">
             모바일 뷰 (375px)
@@ -236,45 +457,38 @@
 
     <div class="phone-frame" id="phoneFrame">
         <div class="phone-content">
-            <h1 class="text-xl font-bold text-center text-gray-800">반응형 단일 날짜 선택 달력</h1>
-            <p class="text-sm text-center text-gray-500 mt-2">아래 입력창을 터치하여 날짜를 선택하세요.</p>
-            <div class="relative w-full max-w-xs" id="triggerWrapper">
-                <input type="text" id="triggerInput" class="rounded-lg p-3 pr-10 text-lg text-gray-700 w-full cursor-pointer focus:outline-none border border-gray-300" placeholder="날짜를 선택하세요" readonly>
-                <svg class="w-5 h-5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                </svg>
+            <h1 class="text-xl font-bold text-center text-gray-800">모바일 달력 입력창</h1>
+            <p class="text-sm text-center text-gray-500 mt-2">아래 입력창을 터치하여 슬라이드업 팝업을 확인하세요.</p>
+            
+            <div class="w-full">
+                <label for="calendarType" class="block text-sm font-medium text-gray-700 mb-2">달력 타입 선택</label>
+                <select id="calendarType" class="w-full p-2 border border-gray-300 rounded-md">
+                    <option value="day">Day (단일)</option>
+                    <option value="dayFromTo">Day FromTo (기간)</option>
+                    <option value="week">Week (단일)</option>
+                    <option value="weekFromTo">Week FromTo (기간)</option>
+                    <option value="month">Month (단일)</option>
+                    <option value="monthFromTo">Month FromTo (기간)</option>
+                    <option value="year">Year (단일)</option>
+                    <option value="yearFromTo">Year FromTo (기간)</option>
+                </select>
+            </div>
+
+            <div class="calendar-input-wrapper">
+                <div class="relative">
+                    <input type="text" id="calendarInput" class="input-trigger" placeholder="날짜를 선택하세요" readonly>
+                    <svg class="calendar-icon w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    <svg class="clear-icon w-5 h-5 hidden" id="clearButton" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </div>
             </div>
         </div>
-        
-        <div class="mobile-popup-overlay" id="popupOverlay">
-            <div class="calendar-container">
-                
-                <div class="calendar-header">
-                    <button id="prevMonth" class="p-2 rounded-full hover:bg-gray-100 transition">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
-                    </button>
-                    <div id="monthYearDisplay" class="month-year-display"></div>
-                    <button id="nextMonth" class="p-2 rounded-full hover:bg-gray-100 transition">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-                    </button>
-                </div>
 
-                <div class="day-names">
-                    <div>일</div>
-                    <div>월</div>
-                    <div>화</div>
-                    <div>수</div>
-                    <div>목</div>
-                    <div>금</div>
-                    <div>토</div>
-                </div>
-
-                <div id="daysGrid" class="days-grid">
+        <div class="mobile-popup-overlay" id="calendarPopupOverlay">
+            <div class="mobile-popup-content">
+                <div id="calendarPopup" class="flex-grow overflow-y-auto">
                     </div>
-
                 <div class="action-buttons">
-                    <button id="cancelButton" class="action-button cancel">취소</button>
-                    <button id="confirmButton" class="action-button confirm" disabled>확인</button>
+                    <button id="confirmButton" class="action-button confirm">확인</button>
                 </div>
             </div>
         </div>
@@ -282,261 +496,834 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // DOM 요소 참조
+            // --- 1. DOM 요소 및 상태 변수 정의 ---
             const appBody = document.getElementById('appBody');
-            const triggerInput = document.getElementById('triggerInput');
-            const popupOverlay = document.getElementById('popupOverlay');
-            const monthYearDisplay = document.getElementById('monthYearDisplay');
-            const daysGrid = document.getElementById('daysGrid');
-            const prevMonthButton = document.getElementById('prevMonth');
-            const nextMonthButton = document.getElementById('nextMonth');
-            const cancelButton = document.getElementById('cancelButton');
+            const calendarTypeSelect = document.getElementById('calendarType');
+            const calendarInput = document.getElementById('calendarInput');
+            const calendarPopupOverlay = document.getElementById('calendarPopupOverlay');
+            const calendarPopup = document.getElementById('calendarPopup');
+            const clearButton = document.getElementById('clearButton');
             const confirmButton = document.getElementById('confirmButton');
             const mobileButton = document.getElementById('mobileViewButton');
             const tabletButton = document.getElementById('tabletViewButton');
-            
+
             // 상태 변수
-            let currentDate = new Date(); // 현재 달력을 표시할 기준 날짜
-            let selectedDate = null; // 사용자가 임시로 선택한 날짜 (Date 객체)
-            let committedDate = null; // 최종적으로 확정된 날짜 (취소 시 복원용)
-            let currentView = 'mobile'; // 현재 뷰 상태
-
-            // 날짜 포맷터
-            const dateFmt = new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).format;
-
-            // --- 뷰 전환 로직 ---
-
-            // 뷰를 설정하고 UI를 업데이트하는 함수
-            function setView(view) {
-                if (view === 'tablet') {
-                    appBody.classList.remove('mobile-view');
-                    appBody.classList.add('tablet-view');
-                    
-                    // 버튼 스타일 업데이트
-                    tabletButton.classList.replace('bg-gray-200', 'bg-blue-500');
-                    tabletButton.classList.replace('text-gray-700', 'text-white');
-                    mobileButton.classList.replace('bg-blue-500', 'bg-gray-200');
-                    mobileButton.classList.replace('text-white', 'text-gray-700');
-                    
-                    currentView = 'tablet';
-                } else { // mobile
-                    appBody.classList.remove('tablet-view');
-                    appBody.classList.add('mobile-view');
-                    
-                    // 버튼 스타일 업데이트
-                    mobileButton.classList.replace('bg-gray-200', 'bg-blue-500');
-                    mobileButton.classList.replace('text-gray-700', 'text-white');
-                    tabletButton.classList.replace('bg-blue-500', 'bg-gray-200');
-                    tabletButton.classList.replace('text-white', 'text-gray-700');
-
-                    currentView = 'mobile';
-                }
-                
-                // 뷰 전환 시 팝업이 열려 있었다면 닫기
-                if (popupOverlay.classList.contains('show')) {
-                    popupOverlay.classList.remove('show');
-                }
+            let selectedDates = []; // 최종 확정된 선택 (Date 객체 배열)
+            let displayDateLeft = new Date(); // 좌측(단일/From) 달력 표시 기준일
+            let displayDateRight = null; // 우측(To) 달력 표시 기준일 (태블릿 FromTo 전용)
+            let currentView = 'calendar'; // 현재 팝업 뷰 모드 ('calendar', 'month', 'year')
+            let tempSelectedDates = []; // 팝업 내에서 임시로 선택 중인 상태
+            let currentFrameView = 'mobile'; // 현재 디바이스 뷰 ('mobile' or 'tablet')
+            
+            // --- 2. 유틸리티 함수 ---
+            
+            // 오늘 날짜 가져오기 (시간 초기화)
+            const getTodayDate = () => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                return today;
             }
-            
-            // 뷰 전환 버튼 이벤트 리스너
-            mobileButton.addEventListener('click', () => setView('mobile'));
-            tabletButton.addEventListener('click', () => setView('tablet'));
-            
-            // --- 달력 렌더링 및 로직 ---
 
-            // 날짜를 'YYYY-MM-DD' 형식의 문자열로 변환
-            function formatDate(date) {
-                if (!date) return null;
+            // 오늘 날짜인지 확인
+            const isToday = (date) => {
+                const today = getTodayDate();
+                return date.getTime() === today.getTime();
+            };
+            
+            // 날짜 포맷 함수 (YYYY.MM.DD)
+            const formatDate = (date) => {
                 const y = date.getFullYear();
                 const m = String(date.getMonth() + 1).padStart(2, '0');
                 const d = String(date.getDate()).padStart(2, '0');
-                return `${y}-${m}-${d}`;
-            }
-            
-            // 두 날짜가 같은지 확인 (날짜, 월, 년도만 비교)
-            function isSameDay(d1, d2) {
-                return d1 && d2 && d1.getFullYear() === d2.getFullYear() && 
-                       d1.getMonth() === d2.getMonth() && 
-                       d1.getDate() === d2.getDate();
-            }
+                return `${y}.${m}.${d}`;
+            };
 
-            // 달력 렌더링 함수
-            function renderCalendar() {
-                daysGrid.innerHTML = '';
-                
-                const year = currentDate.getFullYear();
-                const month = currentDate.getMonth();
-                
-                // 월/년도 표시 업데이트
-                monthYearDisplay.textContent = `${year}년 ${month + 1}월`;
+            // 주차 범위 포맷 함수
+            const formatWeekRange = (startWeekDate, endWeekDate) => {
+                // 선택된 날짜가 속한 실제 주차의 시작일과 종료일을 계산하여 포맷
+                const start = getISOWeekRange(startWeekDate).start;
+                const end = getISOWeekRange(endWeekDate).end;
+                return `${formatDate(start)} ~ ${formatDate(end)}`;
+            };
 
-                // 해당 월의 첫 날과 마지막 날
-                const firstDayOfMonth = new Date(year, month, 1);
-                const lastDayOfMonth = new Date(year, month + 1, 0);
-                
-                // 달력에 표시될 첫 날 (지난 달 날짜부터 시작)
-                // getDay(): 일요일(0) ~ 토요일(6)
-                const startDayIndex = firstDayOfMonth.getDay(); 
-                const startDate = new Date(firstDayOfMonth);
-                startDate.setDate(startDate.getDate() - startDayIndex); // 캘린더 시작 날짜
-
-                const today = new Date(); // 오늘 날짜
-
-                // 총 6주를 표시하기 위한 반복 (최대 42일)
-                for (let i = 0; i < 42; i++) {
-                    const date = new Date(startDate);
-                    date.setDate(startDate.getDate() + i);
-                    
-                    const day = date.getDate();
-                    const currentMonth = date.getMonth();
-                    const dateString = formatDate(date);
-
-                    const isToday = isSameDay(date, today);
-                    const isSelected = isSameDay(date, selectedDate);
-                    const isOtherMonth = currentMonth !== month;
-
-                    const dayCell = document.createElement('div');
-                    dayCell.className = 'day-cell';
-                    if (isSelected) dayCell.classList.add('selected');
-                    if (isToday) dayCell.classList.add('today');
-                    if (isOtherMonth) dayCell.classList.add('other-month');
-
-                    // 날짜 버튼 생성
-                    const dayButton = document.createElement('span');
-                    dayButton.className = 'day-button';
-                    dayButton.textContent = day;
-                    dayButton.setAttribute('data-date', dateString);
-                    dayButton.setAttribute('data-month', currentMonth);
-
-                    // 클릭 이벤트 리스너 추가
-                    dayButton.addEventListener('click', () => {
-                        // 다른 달 날짜 클릭 시 해당 달로 이동
-                        if (isOtherMonth) {
-                            currentDate = date; // 현재 기준 날짜 변경
-                            // selectedDate는 클릭한 날짜로 업데이트 후
-                            selectedDate = date;
-                            renderCalendar(); // 새 달력 렌더링
-                        } else {
-                            // 같은 달 날짜 클릭 시 선택 상태 토글/변경
-                            if (isSelected) {
-                                // 이미 선택된 날짜를 다시 클릭하면 선택 해제 (단일 선택이므로 사실상 불필요)
-                                selectedDate = null;
-                            } else {
-                                // 새로운 날짜 선택
-                                selectedDate = date;
-                            }
-                            // UI 업데이트
-                            updateSelectionUI();
-                        }
-                        updateConfirmButtonState();
-                    });
-
-                    dayCell.appendChild(dayButton);
-                    daysGrid.appendChild(dayCell);
-                    
-                    // 현재 월의 마지막 날을 초과하고, 토요일이 끝났다면 반복 중단 (깔끔한 캘린더 모양 유지)
-                    if (currentMonth > month && date.getDay() === 6) {
-                         // break; // 이 부분은 6주 전체를 보여주기 위해 주석 처리
-                    }
+            // 월 기간 포맷 함수
+            const formatMonthRange = (startDate, endDate) => {
+                const startMonth = String(startDate.getMonth() + 1).padStart(2, '0');
+                const endMonth = String(endDate.getMonth() + 1).padStart(2, '0');
+                if (startDate.getFullYear() === endDate.getFullYear()) {
+                    return `${startDate.getFullYear()}.${startMonth} ~ ${endMonth}`;
                 }
-            }
+                return `${startDate.getFullYear()}.${startMonth} ~ ${endDate.getFullYear()}.${endMonth}`;
+            };
             
-            // 날짜 선택 시 UI만 업데이트 (렌더링 전체를 다시 하지 않고 효율적으로)
-            function updateSelectionUI() {
-                document.querySelectorAll('.day-cell').forEach(cell => {
-                    cell.classList.remove('selected');
-                });
+            // 연도 기간 포맷 함수
+            const formatYearRange = (startDate, endDate) => {
+                return `${startDate.getFullYear()}년 ~ ${endDate.getFullYear()}년`;
+            };
 
-                if (selectedDate) {
-                    const selectedDateString = formatDate(selectedDate);
-                    // data-date 속성을 사용하여 선택된 날짜 찾기
-                    const selectedButton = daysGrid.querySelector(`[data-date="${selectedDateString}"]`);
-                    if (selectedButton) {
-                        selectedButton.closest('.day-cell').classList.add('selected');
-                    }
+            // 입력창 값 업데이트
+            const updateInputValue = () => {
+                clearButton.style.display = 'none';
+                if (selectedDates.length === 0) {
+                    calendarInput.value = '';
+                    calendarInput.placeholder = '날짜를 선택하세요';
+                    return;
                 }
-            }
+
+                clearButton.style.display = 'block';
+                const type = calendarTypeSelect.value;
+                // 선택된 날짜를 정렬하여 시작일/종료일 확보
+                const sortedDates = [...selectedDates].sort((a, b) => a.getTime() - b.getTime());
+
+                // 8가지 모드별 포맷팅 로직
+                if (type === 'day') {
+                    calendarInput.value = formatDate(sortedDates[0]);
+                } else if (type === 'dayFromTo') {
+                    const start = sortedDates[0];
+                    const end = sortedDates.length > 1 ? sortedDates[sortedDates.length - 1] : start;
+                    calendarInput.value = `${formatDate(start)} ~ ${formatDate(end)}`;
+                } else if (type === 'week') {
+                    const { start, end } = getISOWeekRange(sortedDates[0]);
+                    calendarInput.value = formatWeekRange(start, end);
+                } else if (type === 'weekFromTo') {
+                    const start = sortedDates[0];
+                    const end = sortedDates.length > 1 ? sortedDates[sortedDates.length - 1] : start;
+                    calendarInput.value = formatWeekRange(start, end);
+                } else if (type === 'month') {
+                    calendarInput.value = `${sortedDates[0].getFullYear()}.${String(sortedDates[0].getMonth() + 1).padStart(2, '0')}`;
+                } else if (type === 'monthFromTo') {
+                    const start = sortedDates[0];
+                    const end = sortedDates.length > 1 ? sortedDates[sortedDates.length - 1] : start;
+                    calendarInput.value = formatMonthRange(start, end);
+                } else if (type === 'year') {
+                    calendarInput.value = `${sortedDates[0].getFullYear()}년`;
+                } else if (type === 'yearFromTo') {
+                    const start = sortedDates[0];
+                    const end = sortedDates.length > 1 ? sortedDates[sortedDates.length - 1] : start;
+                    calendarInput.value = formatYearRange(start, end);
+                }
+            };
             
-            // 확인 버튼 활성화/비활성화 상태 업데이트
-            function updateConfirmButtonState() {
-                confirmButton.disabled = !selectedDate;
-            }
+            // ISO Week (월요일 시작) 범위 반환 유틸리티
+            const getISOWeekRange = (date) => {
+                const day = (date.getDay() + 6) % 7; // 월요일=0, 일요일=6
+                const startOfWeek = new Date(date);
+                startOfWeek.setDate(date.getDate() - day); // 주의 시작일 (월요일)
+                startOfWeek.setHours(0,0,0,0);
 
-            // 이전 달로 이동
-            prevMonthButton.addEventListener('click', () => {
-                currentDate.setMonth(currentDate.getMonth() - 1);
-                renderCalendar();
-            });
+                const endOfWeek = new Date(startOfWeek);
+                endOfWeek.setDate(startOfWeek.getDate() + 6); // 주의 종료일 (일요일)
+                endOfWeek.setHours(0,0,0,0);
+                return { start: startOfWeek, end: endOfWeek };
+            };
 
-            // 다음 달로 이동
-            nextMonthButton.addEventListener('click', () => {
-                currentDate.setMonth(currentDate.getMonth() + 1);
-                renderCalendar();
-            });
+            // 현재 주차에 속하는지 확인
+            const isInCurrentWeek = (date) => {
+                const today = getTodayDate();
+                const { start: currentWeekStart, end: currentWeekEnd } = getISOWeekRange(today);
+                return date.getTime() >= currentWeekStart.getTime() && date.getTime() <= currentWeekEnd.getTime();
+            };
+
+            // ISO 8601 주차 계산 (월요일 시작)
+            const getWeekOfYear = (date) => {
+                const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+                const dayNum = d.getUTCDay() || 7; // 1=월, 7=일
+                d.setUTCDate(d.getUTCDate() + 4 - dayNum); // 목요일을 기준으로 주차 계산
+                const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+                return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+            };
+
+            // 팝업 열 때 표시할 달력의 기준 날짜 설정 및 뷰 모드 초기화
+            const initializeDisplayDates = () => {
+                const type = calendarTypeSelect.value;
+                const isFromToType = type.endsWith('FromTo');
+                const isTabletView = currentFrameView === 'tablet';
+
+                let baseDate = getTodayDate(); // 기본 기준일은 오늘 날짜
+
+                if (selectedDates.length > 0) {
+                    baseDate = selectedDates[0]; // 선택된 날짜가 있다면, 선택된 날짜를 기준일로 사용
+                }
+                
+                // 뷰 모드와 기준일 설정
+                if (type.includes('day') || type.includes('week')) {
+                    displayDateLeft = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1); // 월의 1일
+                    currentView = 'calendar'; // Day/Week 모드는 달력 그리드 뷰
+                } else if (type.includes('month')) {
+                    displayDateLeft = new Date(baseDate.getFullYear(), 0, 1); // 연도의 1월 1일
+                    currentView = 'month'; // Month 모드는 월 선택 그리드 뷰
+                } else if (type.includes('year')) {
+                    currentView = 'year'; // Year 모드는 연도 선택 그리드 뷰
+                    // 선택된 날짜(baseDate)의 연도를 기준으로 12년 범위의 시작 연도 계산
+                    const startYear = baseDate.getFullYear() - (baseDate.getFullYear() % 12); 
+                    displayDateLeft = new Date(startYear, 0, 1);
+                } else {
+                    currentView = 'calendar'; // 기본값
+                }
+                displayDateLeft.setHours(0, 0, 0, 0);
+
+                // 태블릿 뷰에서 FromTo 타입일 경우 멀티 뷰 설정
+                if (isTabletView && isFromToType) {
+                    displayDateRight = new Date(displayDateLeft);
+                    
+                    if (currentView === 'calendar') { // Day/Week FromTo: 다음 달
+                        displayDateRight.setMonth(displayDateRight.getMonth() + 1);
+                    } else if (currentView === 'month') { // Month FromTo: 다음 연도
+                        displayDateRight.setFullYear(displayDateRight.getFullYear() + 1); 
+                    } else if (currentView === 'year') { // Year FromTo: 12년 뒤 범위 시작
+                        displayDateRight.setFullYear(displayDateRight.getFullYear() + 12); 
+                    }
+                    displayDateRight.setHours(0, 0, 0, 0);
+                } else {
+                    displayDateRight = null;
+                }
+            };
+
+            // --- 3. UI 및 뷰 관리 ---
+
+            // 디바이스 뷰 전환
+            const setView = (view) => {
+                currentFrameView = view;
+                // CSS 클래스를 이용해 프레임 크기 변경
+                appBody.classList.toggle('tablet-view', view === 'tablet');
+                appBody.classList.toggle('mobile-view', view === 'mobile');
+                
+                // 버튼 스타일 업데이트
+                mobileButton.classList.toggle('bg-blue-500', view === 'mobile');
+                mobileButton.classList.toggle('text-white', view === 'mobile');
+                tabletButton.classList.toggle('bg-blue-500', view === 'tablet');
+                tabletButton.classList.toggle('text-white', view === 'tablet');
+                mobileButton.classList.toggle('bg-gray-200', view === 'tablet');
+                mobileButton.classList.toggle('text-gray-700', view === 'tablet');
+                tabletButton.classList.toggle('bg-gray-200', view === 'mobile');
+                tabletButton.classList.toggle('text-gray-700', view === 'mobile');
+                
+                // 뷰 전환 시 팝업이 열려 있었다면 닫고, 현재 모드로 다시 초기화
+                if (calendarPopupOverlay.classList.contains('show')) {
+                    calendarPopupOverlay.classList.remove('show');
+                }
+            };
 
             // 팝업 열기
-            triggerInput.addEventListener('click', (event) => {
-                // 팝업 열기 전에 현재 확정된 날짜를 임시 저장
-                committedDate = selectedDate; 
+            const showPopup = () => {
+                tempSelectedDates = [...selectedDates]; // 확정된 선택을 임시 선택으로 복사
+                initializeDisplayDates(); // 현재 선택 상태를 기반으로 달력 기준일 초기화
+                calendarInput.classList.add('active');
+                calendarPopupOverlay.classList.add('show');
+                renderCalendar();
+            };
+
+            // 팝업 닫기 (취소)
+            const hidePopup = () => {
+                calendarInput.classList.remove('active');
+                calendarPopupOverlay.classList.remove('show');
+            };
+
+            // --- 4. 선택 상태 확인 로직 ---
+
+            // Day/DayFromTo 타입일 때 날짜 셀의 선택 상태 확인
+            const isDaySelected = (dayDate) => {
+                const type = calendarTypeSelect.value;
+                dayDate.setHours(0, 0, 0, 0);
+                // tempSelectedDates는 DayFromTo 모드에서 [시작일, 종료일] 형태
+                const selection = [...tempSelectedDates].sort((a, b) => a.getTime() - b.getTime());
+
+                if (selection.length === 0) return { isSelected: false };
+
+                // Week 타입은 날짜 셀에 선택 표시를 하지 않음 (주차 번호에만 표시)
+                if (type.includes('week')) {
+                    return { isSelected: false }; 
+                }
+
+                if (type.startsWith('day')) {
+                    const start = selection[0];
+                    const end = selection.length > 1 ? selection[selection.length - 1] : start;
+
+                    const isStart = dayDate.getTime() === start.getTime();
+                    const isEnd = dayDate.getTime() === end.getTime();
+                    const isInRange = dayDate.getTime() > start.getTime() && dayDate.getTime() < end.getTime();
+
+                    return { 
+                        isSelected: isStart || isEnd || isInRange, 
+                        isStart: isStart, 
+                        isEnd: isEnd, 
+                        isInRange: isInRange 
+                    };
+                }
                 
-                // 달력의 현재 기준 날짜를 확정된 날짜로 설정 (혹은 오늘 날짜)
-                currentDate = committedDate ? new Date(committedDate) : new Date();
-                
-                // 달력 렌더링
-                renderCalendar(); 
-                updateConfirmButtonState();
-                
-                popupOverlay.classList.add('show');
-                event.stopPropagation();
-            });
+                return { isSelected: false };
+            };
             
-            // 팝업 닫기 (오버레이 클릭 시 또는 ESC 키) - 취소 기능
-            popupOverlay.addEventListener('click', (event) => {
-                if (event.target.id === 'popupOverlay' || event.target.id === 'cancelButton') {
-                    if (popupOverlay.classList.contains('show')) {
-                        // 임시 저장된 항목으로 복원 (취소 기능)
-                        selectedDate = committedDate; 
+            // Week/WeekFromTo 타입일 때 주차 번호의 선택 상태 확인
+            const isWeekSelected = (weekStartDate) => {
+                const type = calendarTypeSelect.value;
+                // tempSelectedDates는 WeekFromTo 모드에서 [시작 주차의 월요일, 종료 주차의 월요일] 형태
+                const selection = [...tempSelectedDates].sort((a, b) => a.getTime() - b.getTime());
+                
+                if (selection.length === 0 || !type.includes('week')) return { isSelected: false };
+                
+                // 선택된 날짜가 속한 주차의 시작일 (월요일)
+                const startSelectedWeekStart = getISOWeekRange(selection[0]).start;
+                const endSelectedWeekStart = getISOWeekRange(selection[selection.length - 1]).start;
+                
+                const isStart = weekStartDate.getTime() === startSelectedWeekStart.getTime();
+                const isEnd = weekStartDate.getTime() === endSelectedWeekStart.getTime();
+                // 기간 내 주차 (주차 시작일 기준)
+                const isInRange = weekStartDate.getTime() > startSelectedWeekStart.getTime() && weekStartDate.getTime() < endSelectedWeekStart.getTime();
+
+                return {
+                    isSelected: isStart || isEnd || isInRange,
+                    isStart: isStart,
+                    isEnd: isEnd,
+                    isInRange: isInRange
+                };
+            };
+
+
+            // Month/Year 타입일 때 월/연도 셀의 선택 상태 확인
+            const isMonthOrYearSelected = (targetDate, selectionType) => {
+                const selection = [...tempSelectedDates].sort((a, b) => a.getTime() - b.getTime());
+                if (selection.length === 0) return { isSelected: false };
+
+                if (selectionType === 'month') {
+                    // 월의 1일을 기준으로 비교
+                    const startMonth = new Date(selection[0].getFullYear(), selection[0].getMonth(), 1);
+                    const endMonth = selection.length > 1 ? new Date(selection[1].getFullYear(), selection[1].getMonth(), 1) : startMonth;
+                    const checkMonth = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
+                    
+                    const isStart = checkMonth.getTime() === startMonth.getTime();
+                    const isEnd = checkMonth.getTime() === endMonth.getTime();
+                    const isInRange = checkMonth.getTime() > startMonth.getTime() && checkMonth.getTime() < endMonth.getTime();
+
+                    return {
+                        isSelected: isStart || isEnd || isInRange,
+                        isStart: isStart,
+                        isEnd: isEnd,
+                        isInRange: isInRange
+                    };
+                } else if (selectionType === 'year') {
+                    // 연도를 기준으로 비교
+                    const startYear = selection[0].getFullYear();
+                    const endYear = selection.length > 1 ? selection[1].getFullYear() : startYear;
+                    const checkYear = targetDate.getFullYear();
+
+                    const isStart = checkYear === startYear;
+                    const isEnd = checkYear === endYear;
+                    const isInRange = checkYear > startYear && checkYear < endYear;
+
+                    return {
+                        isSelected: isStart || isEnd || isInRange,
+                        isStart: isStart,
+                        isEnd: isEnd,
+                        isInRange: isInRange
+                    };
+                }
+                return { isSelected: false };
+            };
+
+
+            // --- 5. 렌더링 함수 ---
+
+            // 월 선택 그리드 렌더링 (Month/MonthFromTo)
+            const renderMonthView = (targetDate, container, isRightCalendar = false) => {
+                const year = targetDate.getFullYear();
+                
+                const wrapper = document.createElement('div');
+                wrapper.className = isRightCalendar ? 'calendar-container right' : 'calendar-container left';
+
+                let html = `<div class="simplified-options">`;
+                
+                // 월 선택 뷰 헤더 (연도 이동 버튼 포함)
+                html += `<div class="calendar-header border-none">
+                            <button onclick="navigateMonthYear(${year - 1}, 0, 'month', ${isRightCalendar})" class="text-gray-500 hover:bg-gray-100 p-2 rounded-full">&lt;</button>
+                            <span class="text-lg font-bold">${year}년</span>
+                            <button onclick="navigateMonthYear(${year + 1}, 0, 'month', ${isRightCalendar})" class="text-gray-500 hover:bg-gray-100 p-2 rounded-full">&gt;</button>
+                        </div>`;
+                
+                // 3x4 그리드
+                html += `<div class="grid grid-cols-3 gap-y-1 gap-x-0 p-4">`;
+
+                for (let i = 0; i < 12; i++) {
+                    const monthDate = new Date(year, i, 1);
+                    const { isSelected, isStart, isEnd, isInRange } = isMonthOrYearSelected(monthDate, 'month');
+                    const isCurrentMonth = monthDate.getFullYear() === getTodayDate().getFullYear() && monthDate.getMonth() === getTodayDate().getMonth();
+                    
+                    let classes = 'simplified-option';
+                    // 선택 및 기간 스타일 적용
+                    if (isSelected) {
+                        if (isStart && isEnd) { 
+                            classes += ' selected single-day-range'; 
+                        } else if (isStart) {
+                            classes += ' start-of-range';
+                        } else if (isEnd) {
+                            classes += ' end-of-range';
+                        } else if (isInRange) {
+                            classes += ' selected-range';
+                        } else {
+                            classes += ' selected';
+                        }
+                    }
+                    // 현재 월 표시
+                    if (!isSelected && isCurrentMonth) {
+                        classes += ' current-mark';
+                    }
+
+                    html += `<div class="${classes}" data-month="${i}" data-view="month">${i + 1}월</div>`;
+                }
+
+                html += `</div></div>`;
+                
+                wrapper.innerHTML = html;
+                container.appendChild(wrapper);
+            };
+
+            // 연도 선택 그리드 렌더링 (Year/YearFromTo)
+            const renderYearView = (targetDate, container, isRightCalendar = false) => {
+                // targetDate는 12년 범위의 시작 연도를 담고 있음 (예: 2014)
+                const startYear = targetDate.getFullYear();
+                const endYear = startYear + 11; // 총 12년 범위
+
+                const wrapper = document.createElement('div');
+                wrapper.className = isRightCalendar ? 'calendar-container right' : 'calendar-container left';
+
+                let html = `<div class="simplified-options">`;
+                
+                // 연도 선택 뷰 헤더 (12년 단위 이동 버튼 포함)
+                html += `<div class="calendar-header border-none">
+                            <button onclick="navigateMonthYear(${startYear - 12}, 0, 'year', ${isRightCalendar})" class="text-gray-500 hover:bg-gray-100 p-2 rounded-full">&lt;</button>
+                            <span class="text-lg font-bold">${startYear} ~ ${endYear}</span>
+                            <button onclick="navigateMonthYear(${startYear + 12}, 0, 'year', ${isRightCalendar})" class="text-gray-500 hover:bg-gray-100 p-2 rounded-full">&gt;</button>
+                        </div>`;
+                
+                // 3x4 그리드
+                html += `<div class="grid grid-cols-3 gap-y-1 gap-x-0 p-4">`;
+
+                for (let y = startYear; y <= endYear; y++) {
+                    const yearDate = new Date(y, 0, 1);
+                    const { isSelected, isStart, isEnd, isInRange } = isMonthOrYearSelected(yearDate, 'year');
+                    const isCurrentYear = y === getTodayDate().getFullYear();
+                    
+                    let classes = 'simplified-option';
+                    // 선택 및 기간 스타일 적용
+                    if (isSelected) {
+                        if (isStart && isEnd) {
+                            classes += ' selected single-day-range';
+                        } else if (isStart) {
+                            classes += ' start-of-range';
+                        } else if (isEnd) {
+                            classes += ' end-of-range';
+                        } else if (isInRange) {
+                            classes += ' selected-range';
+                        } else {
+                            classes += ' selected';
+                        }
+                    }
+                    // 현재 연도 표시
+                    if (!isSelected && isCurrentYear) {
+                        classes += ' current-mark';
+                    }
+
+                    html += `<div class="${classes}" data-year="${y}" data-view="year">${y}년</div>`;
+                }
+
+                html += `</div></div>`;
+
+                wrapper.innerHTML = html;
+                container.appendChild(wrapper);
+            };
+            
+            // 일별 달력 렌더링 (Day/Week 모드)
+            const renderDays = (date, container, isRightCalendar = false) => {
+                const year = date.getFullYear();
+                const month = date.getMonth();
+                const type = calendarTypeSelect.value;
+                const showWeekNumbers = type.includes('week'); // Week 모드일 때 주차 번호 표시
+
+                const firstDayOfMonth = new Date(year, month, 1);
+                // 월요일을 주의 시작(ISO)으로 하기 위해 조정
+                const firstDayOfWeek = (firstDayOfMonth.getDay() + 6) % 7; 
+
+                let html = `
+                    <div class="calendar-header">
+                        <button onclick="navigateMonthYear(${year}, ${month - 1}, 'calendar', ${isRightCalendar})" class="text-gray-500 hover:bg-gray-100 p-2 rounded-full">&lt;</button>
+                        <span class="text-lg font-bold">${year}년 ${month + 1}월</span>
+                        <button onclick="navigateMonthYear(${year}, ${month + 1}, 'calendar', ${isRightCalendar})" class="text-gray-500 hover:bg-gray-100 p-2 rounded-full">&gt;</button>
+                    </div>
+                `;
+
+                // 요일 표시 (ISO 기준: 월요일부터 시작)
+                html += `<div class="calendar-weekdays ${showWeekNumbers ? 'with-week-numbers' : ''}">`;
+                if (showWeekNumbers) {
+                    html += `<div class="week-column">주</div>`; 
+                }
+                const weekdays = ['월', '화', '수', '목', '금', '토', '일'];
+                weekdays.forEach(day => {
+                    html += `<div>${day}</div>`;
+                });
+                html += `</div>`;
+
+                // 날짜 그리드
+                // DayFromTo 타입일 때만 기간 스타일 클래스 적용
+                const gridClass = type.startsWith('day') && type.includes('FromTo') ? 'day-fromto-range' : '';
+                html += `<div class="calendar-grid ${showWeekNumbers ? 'with-week-numbers' : ''} ${gridClass}">`;
+
+                // 달력 그리드 시작 날짜 (이전 달의 일부 포함)
+                let currentDay = new Date(firstDayOfMonth);
+                currentDay.setDate(firstDayOfMonth.getDate() - firstDayOfWeek);
+                currentDay.setHours(0, 0, 0, 0);
+                
+                for (let i = 0; i < 42; i++) { 
+                    const day = currentDay.getDate();
+                    const currentMonth = currentDay.getMonth();
+                    const dayOfWeek = currentDay.getDay(); // 0(Sun) to 6(Sat)
+
+                    // 주차 번호 표시 (ISO Week 기준 월요일에만 표시)
+                    if (showWeekNumbers && dayOfWeek === 1) { 
+                        const weekNumber = getWeekOfYear(currentDay);
                         
-                        // 달력 UI 복원 (복원된 날짜가 포함된 달로 이동)
-                        currentDate = committedDate ? new Date(committedDate) : new Date();
-                        renderCalendar();
-                        updateSelectionUI();
-                        updateConfirmButtonState();
+                        let weekClasses = 'calendar-week-number';
+                        const { isSelected, isStart, isEnd } = isWeekSelected(currentDay);
+
+                        // 현재 주차 표시
+                        if (isInCurrentWeek(currentDay) && !isSelected) {
+                            weekClasses += ' current-week-mark';
+                        }
+
+                        // 주차 선택/기간 스타일 적용
+                        if (isSelected) {
+                            if (isStart && isEnd) { 
+                                weekClasses += ' selected-week single-day-range';
+                            } else if (isStart) {
+                                weekClasses += ' start-week-of-range';
+                            } else if (isEnd) {
+                                weekClasses += ' end-week-of-range';
+                            } else {
+                                weekClasses += ' selected-week';
+                            }
+                        }
                         
-                        popupOverlay.classList.remove('show');
+                        html += `<div class="${weekClasses}" data-week-start="${currentDay.toISOString()}" data-view="week-number">${weekNumber}</div>`;
+                    }
+
+
+                    // 날짜 셀 렌더링
+                    let classes = 'calendar-day';
+                    let isSelected = false;
+
+                    // 다른 달 날짜 처리
+                    if (currentMonth !== month) {
+                        classes += ' outside-month';
+                    } else {
+                        // 현재 달 날짜
+                        const selectionInfo = isDaySelected(currentDay);
+                        isSelected = selectionInfo.isSelected;
+                        
+                        // Day/DayFromTo 타입일 때만 날짜 셀 선택 스타일 적용
+                        if (type.startsWith('day')) {
+                            if (isSelected) {
+                                if (selectionInfo.isStart && selectionInfo.isEnd) {
+                                    classes += ' selected single-day-range';
+                                } else if (selectionInfo.isStart) {
+                                    classes += ' start-of-range';
+                                } else if (selectionInfo.isEnd) {
+                                    classes += ' end-of-range';
+                                } else {
+                                    classes += ' selected-range';
+                                }
+                            }
+                        }
+                        
+                        // Day/DayFromTo 타입일 때만 오늘 날짜 표시
+                        if (type.includes('day') && isToday(currentDay) && !isSelected) {
+                            classes += ' today-mark';
+                        }
+                    }
+
+                    // 실제 날짜 셀 추가
+                    html += `<div class="${classes}" data-date="${currentDay.toISOString()}" data-view="day">${day}</div>`;
+
+                    // 다음 날짜로 이동
+                    currentDay.setDate(currentDay.getDate() + 1);
+
+                    // 6주차(42일) 표시 후 종료 (42일 이상은 필요 없음)
+                    if (i >= 41) break; 
+                }
+
+                html += `</div>`;
+                
+                // 컨테이너에 렌더링
+                const wrapper = document.createElement('div');
+                wrapper.className = isRightCalendar ? 'calendar-container right' : 'calendar-container left';
+                wrapper.innerHTML = html;
+                container.appendChild(wrapper);
+            };
+
+            // 전체 달력 렌더링 메인 함수
+            const renderCalendar = () => {
+                const type = calendarTypeSelect.value;
+                calendarPopup.innerHTML = '';
+                
+                const isFromToType = type.endsWith('FromTo');
+                const isTabletView = currentFrameView === 'tablet';
+                // 태블릿 + FromTo 타입이고, 우측 달력 기준일이 설정된 경우 (2분할 뷰 활성화 조건)
+                const isMultiView = isTabletView && isFromToType && displayDateRight;
+                
+                // 멀티 뷰 레이아웃 클래스 전환
+                calendarPopup.classList.toggle('calendar-multi-view', isMultiView);
+                calendarPopup.classList.toggle('calendar-single-view', !isMultiView);
+                
+                // 현재 뷰 모드에 따라 렌더링 함수 호출
+                if (currentView === 'month') {
+                    renderMonthView(displayDateLeft, calendarPopup, false);
+                    if (isMultiView) {
+                        renderMonthView(displayDateRight, calendarPopup, true);
+                    }
+                } else if (currentView === 'year') {
+                    renderYearView(displayDateLeft, calendarPopup, false);
+                    if (isMultiView) {
+                        renderYearView(displayDateRight, calendarPopup, true);
+                    }
+                } else if (currentView === 'calendar') {
+                    renderDays(displayDateLeft, calendarPopup, false);
+                    if (isMultiView) {
+                        renderDays(displayDateRight, calendarPopup, true);
                     }
                 }
-            });
+            };
             
-            // ESC 키 입력 시 팝업 닫기 및 복원
-            document.addEventListener('keydown', (event) => {
-                if (event.key === 'Escape' && popupOverlay.classList.contains('show')) {
-                    // 임시 저장된 항목으로 복원
-                    selectedDate = committedDate; 
-                    
-                    // 달력 UI 복원
-                    currentDate = committedDate ? new Date(committedDate) : new Date();
+            // 월/연도 이동 함수 (클릭 이벤트에서 호출되도록 window에 노출)
+            window.navigateMonthYear = (newYear, newMonth, view, isRight = false) => {
+                let newDate = new Date(newYear, newMonth, 1);
+                newDate.setHours(0, 0, 0, 0);
+
+                const type = calendarTypeSelect.value;
+                const isFromToType = type.endsWith('FromTo');
+                const isTabletView = currentFrameView === 'tablet';
+
+                // 태블릿 FromTo 모드에서 달력 순서/겹침 방지 로직
+                if (isTabletView && isFromToType) {
+                    if (isRight) {
+                        // 우측 달력: 좌측 달력과 겹치거나 앞설 수 없음 (Month/Year 뷰에서도 마찬가지)
+                        if (newDate.getTime() <= displayDateLeft.getTime()) {
+                            return;
+                        }
+                    } else { // isLeft
+                        // 좌측 달력: 우측 달력과 겹치거나 뒤따라갈 수 없음
+                        if (displayDateRight && newDate.getTime() >= displayDateRight.getTime()) {
+                            return;
+                        }
+                    }
+                }
+
+                // 기준일 업데이트
+                if (isRight && displayDateRight) {
+                    displayDateRight = newDate;
+                } else {
+                    displayDateLeft = newDate;
+                }
+                
+                renderCalendar();
+            };
+
+
+            // --- 6. 이벤트 핸들러 및 선택 로직 ---
+
+            // 입력창 클릭: 팝업 열기
+            calendarInput.addEventListener('click', showPopup);
+
+            // 클리어 버튼 클릭: 선택 초기화
+            clearButton.addEventListener('click', (event) => {
+                event.stopPropagation();
+                selectedDates = [];
+                tempSelectedDates = [];
+                updateInputValue();
+                if (calendarPopupOverlay.classList.contains('show')) {
+                    initializeDisplayDates(); // 달력 표시 월/년도 초기화
                     renderCalendar();
-                    updateSelectionUI();
-                    updateConfirmButtonState();
+                }
+            });
+
+            // 달력 타입 변경: 선택 초기화 및 재렌더링 준비
+            calendarTypeSelect.addEventListener('change', () => {
+                selectedDates = [];
+                tempSelectedDates = [];
+                updateInputValue();
+                if (calendarPopupOverlay.classList.contains('show')) {
+                    initializeDisplayDates();
+                    renderCalendar();
+                }
+            });
+
+            // 뷰 전환 버튼
+            mobileButton.addEventListener('click', () => setView('mobile'));
+            tabletButton.addEventListener('click', () => setView('tablet'));
+            
+            // 달력 선택 영역 클릭 이벤트 핸들러 (Day/Week/Month/Year 선택 로직)
+            calendarPopup.addEventListener('click', (event) => {
+                const target = event.target.closest('[data-view]');
+                if (!target) return;
+
+                const type = calendarTypeSelect.value;
+                let selectionMade = false;
+
+                // 1. Day 또는 Week 모드에서의 날짜 셀 클릭 (Day/DayFromTo/Week/WeekFromTo)
+                if (target.dataset.view === 'day' && target.dataset.date) {
+                    const dayDate = new Date(target.dataset.date);
                     
-                    popupOverlay.classList.remove('show');
+                    if (target.classList.contains('outside-month')) return;
+                    
+                    if (type.includes('week')) {
+                         // Week 타입일 때: 날짜 셀 클릭 시 해당 주의 월요일을 기준일로 사용
+                         const { start: weekStartDate } = getISOWeekRange(dayDate);
+
+                         if (type === 'week') { // 단일 주 선택
+                             // 이미 선택된 주를 다시 클릭하면 해제, 아니면 선택
+                             if (tempSelectedDates.length === 1 && getISOWeekRange(tempSelectedDates[0]).start.getTime() === weekStartDate.getTime()) {
+                                 tempSelectedDates = []; 
+                             } else {
+                                 tempSelectedDates = [weekStartDate];
+                             }
+                             selectionMade = true;
+                         } else if (type === 'weekFromTo') { // 주 기간 선택
+                             if (tempSelectedDates.length === 0 || tempSelectedDates.length === 2) {
+                                 tempSelectedDates = [weekStartDate]; // 시작 주 선택
+                             } else if (tempSelectedDates.length === 1) {
+                                 const firstWeekStart = getISOWeekRange(tempSelectedDates[0]).start;
+                                 
+                                 if (weekStartDate.getTime() === firstWeekStart.getTime()) {
+                                     tempSelectedDates = []; 
+                                 } else {
+                                     tempSelectedDates.push(weekStartDate); // 종료 주 선택
+                                     tempSelectedDates.sort((a, b) => a.getTime() - b.getTime());
+                                 }
+                             }
+                             selectionMade = true;
+                         }
+                    } else if (type === 'day') { // 단일 날짜 선택
+                        tempSelectedDates = [dayDate];
+                        selectionMade = true;
+                    } else if (type === 'dayFromTo') { // 날짜 기간 선택
+                        if (tempSelectedDates.length === 0 || tempSelectedDates.length === 2) {
+                            tempSelectedDates = [dayDate]; // 시작일 선택
+                        } else if (tempSelectedDates.length === 1) {
+                            if (dayDate.getTime() === tempSelectedDates[0].getTime()) {
+                                tempSelectedDates = [];
+                            } else {
+                                tempSelectedDates.push(dayDate); // 종료일 선택
+                                tempSelectedDates.sort((a, b) => a.getTime() - b.getTime());
+                            }
+                        }
+                        selectionMade = true;
+                    }
+                    
+                } 
+                
+                // 2. Week 모드에서의 주차 번호 클릭 (Week/WeekFromTo)
+                else if (target.dataset.view === 'week-number' && target.dataset.weekStart) {
+                    const weekStartDate = new Date(target.dataset.weekStart);
+                    
+                    if (type === 'week') { // 단일 주 선택
+                        if (tempSelectedDates.length === 1 && getISOWeekRange(tempSelectedDates[0]).start.getTime() === weekStartDate.getTime()) {
+                            tempSelectedDates = []; 
+                        } else {
+                            tempSelectedDates = [weekStartDate];
+                        }
+                        selectionMade = true;
+                    } else if (type === 'weekFromTo') { // 주 기간 선택
+                        if (tempSelectedDates.length === 0 || tempSelectedDates.length === 2) {
+                            tempSelectedDates = [weekStartDate]; // 시작 주 선택
+                        } else if (tempSelectedDates.length === 1) {
+                            const firstWeekStart = getISOWeekRange(tempSelectedDates[0]).start;
+                            
+                            if (weekStartDate.getTime() === firstWeekStart.getTime()) {
+                                tempSelectedDates = []; 
+                            } else {
+                                tempSelectedDates.push(weekStartDate); // 종료 주 선택
+                                tempSelectedDates.sort((a, b) => a.getTime() - b.getTime());
+                            }
+                        }
+                        selectionMade = true;
+                    }
+                } 
+                
+                // 3. Month 모드에서의 월 셀 클릭 (Month/MonthFromTo)
+                else if (target.dataset.view === 'month' && target.dataset.month) {
+                    const month = parseInt(target.dataset.month);
+                    // 클릭된 달력의 연도를 기준으로 날짜 생성
+                    const parentCalendar = target.closest('.calendar-container');
+                    const isRightCalendar = parentCalendar && parentCalendar.classList.contains('right');
+
+                    let year = isRightCalendar && currentFrameView === 'tablet' ? displayDateRight.getFullYear() : displayDateLeft.getFullYear();
+                    
+                    const date = new Date(year, month, 1); // 해당 월의 1일
+
+                    if (type === 'month') { // 단일 월 선택
+                        tempSelectedDates = [date];
+                    } else if (type === 'monthFromTo') { // 월 기간 선택
+                        if (tempSelectedDates.length === 0 || tempSelectedDates.length === 2) {
+                           tempSelectedDates = [date]; // 시작 월 선택 (1일)
+                        } else if (tempSelectedDates.length === 1) {
+                            if (date.getTime() === tempSelectedDates[0].getTime()) {
+                                tempSelectedDates = [];
+                            } else {
+                                tempSelectedDates.push(date); // 종료 월 선택 (1일)
+                                tempSelectedDates.sort((a, b) => a.getTime() - b.getTime()); 
+                                // 종료일은 해당 월의 마지막 날짜로 자동 계산됨 (formatMonthRange 참조)
+                            }
+                        }
+                    }
+                    selectionMade = true;
+
+                } 
+                
+                // 4. Year 모드에서의 연도 셀 클릭 (Year/YearFromTo)
+                else if (target.dataset.view === 'year' && target.dataset.year) {
+                    const year = parseInt(target.dataset.year);
+                    const date = new Date(year, 0, 1); // 해당 연도의 1월 1일
+
+                    if (type === 'year') { // 단일 연도 선택
+                        tempSelectedDates = [date];
+                    } else if (type === 'yearFromTo') { // 연도 기간 선택
+                        if (tempSelectedDates.length === 0 || tempSelectedDates.length === 2) {
+                            tempSelectedDates = [date]; // 시작 연도 선택 (1월 1일)
+                        } else if (tempSelectedDates.length === 1) {
+                            if (date.getTime() === tempSelectedDates[0].getTime()) {
+                                tempSelectedDates = [];
+                            } else {
+                                tempSelectedDates.push(date); // 종료 연도 선택 (1월 1일)
+                                tempSelectedDates.sort((a, b) => a.getTime() - b.getTime()); 
+                                // 종료일은 해당 연도의 마지막 날짜로 자동 계산됨 (formatYearRange 참조)
+                            }
+                        }
+                    }
+                    selectionMade = true;
+                }
+                
+                if (selectionMade) {
+                    renderCalendar(); // 선택 상태가 변경되면 달력 재렌더링
+                    // updateInputValue(); // 선택 시 입력창 값 업데이트는 확인 버튼에서만 수행
                 }
             });
 
-            // 확인 버튼 (팝업 닫기 기능 및 값 전달)
+            // 확인 버튼: 임시 선택을 최종 선택으로 확정
             confirmButton.addEventListener('click', () => {
-                if (selectedDate) {
-                    const selectedString = dateFmt(selectedDate);
-                    triggerInput.value = selectedString; // 입력창 업데이트
-                    committedDate = selectedDate; // 최종 확정
-                }
-                popupOverlay.classList.remove('show');
+                // 임시 선택된 날짜를 최종 선택으로 복사 (정렬 유지)
+                selectedDates = [...tempSelectedDates].sort((a,b) => a.getTime() - b.getTime());
+                updateInputValue(); // 최종 값을 입력창에 표시
+                hidePopup();
             });
 
-            // 초기 뷰 설정 및 달력 렌더링
-            setView('mobile');
-            renderCalendar();
+            // 팝업 오버레이 클릭 시 팝업 닫기 (팝업 컨테이너 외부 클릭 시)
+            calendarPopupOverlay.addEventListener('click', (event) => {
+                if (event.target === calendarPopupOverlay) {
+                    hidePopup();
+                }
+            });
+
+            // --- 7. 초기화 및 시작 ---
+            initializeDisplayDates(); // 초기 날짜 설정
+            setView(currentFrameView); // 초기 뷰 설정
+            updateInputValue(); // 초기 입력값 표시 (없음)
         });
     </script>
 </body>
