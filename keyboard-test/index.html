@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content"> 
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
     <title>모바일 키보드 Fixed UI 및 스크롤 테스트 (VisualViewport 반영)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -43,13 +43,13 @@
         Visual Viewport 상태 모니터링 중...
     </div>
     
-    <main class="container mx-auto p-4 flex-grow">
+    <main class="container mx-auto px-4 py-12 flex-grow">
         <h1 class="text-3xl font-bold mb-4 text-gray-800">스크롤 가능한 콘텐츠 영역</h1>
         
         <div class="space-y-4">
             <div class="bg-white p-4 rounded-xl shadow-md border border-gray-100">
                 <h2 class="font-semibold text-lg text-indigo-600">섹션 1: Fixed UI 안정화 로직</h2>
-                <p class="text-sm mt-1">스크롤 보정 시 `instant` 스크롤을 적용하여 Fixed UI의 잔 떨림을 최소화했습니다.</p>
+                <p class="text-sm mt-1">브라우저 기본 동작(`resizes-visual`)에서 JS 보정(`keyboardHeight + offsetTop`)을 통해 Fixed UI를 VV에 앵커링합니다.</p>
             </div>
             
             <div class="h-96 bg-gray-50 flex items-center justify-center rounded-xl shadow-inner">
@@ -86,13 +86,13 @@
         const statusDisplay = document.getElementById('status');
         const safetyMargin = 15; 
 
-        // 변수 정의 및 키보드 높이 계산 함수 구현
+        // 1단계: 변수 정의 및 키보드 높이 계산 함수 구현
         function getKeyboardHeight() {
             const keyboardHeight = window.innerHeight - (window.visualViewport?.height?? window.innerHeight);
             return Math.max(0, Math.floor(keyboardHeight));
         }
 
-        // Fixed UI 보정 로직 구현 (position: fixed 유지)
+        // 2단계: Fixed UI 보정 로직 구현 (position: fixed 유지)
         function handleFixedElementCorrection() {
             if (!window.visualViewport) return;
 
@@ -100,14 +100,15 @@
             const offsetTop = window.visualViewport.offsetTop?? 0; 
             
             // ---------------------------------------------------
-            // 상단 Fixed UI (#status) 보정
+            // 단계 2-1: 상단 Fixed UI (#status) 보정
             // ---------------------------------------------------
             if (statusDisplay) {
+                // 상단 Fixed는 offsetTop으로 보정
                 statusDisplay.style.transform = `translateY(${offsetTop}px)`;
             }
 
             // ---------------------------------------------------
-            // 하단 Fixed UI (#fixed-container) 보정
+            // 단계 2-2: 하단 Fixed UI (#fixed-container) 보정
             // ---------------------------------------------------
             if (fixedContainer) {
                 if (keyboardHeight > 0) {
@@ -116,8 +117,9 @@
                     const totalTransformBottom = keyboardHeight + offsetTop; 
                     fixedContainer.style.transform = `translateY(-${totalTransformBottom}px)`;
                     
+                    // [수정] statusDisplay 텍스트 내용을 수정하여 정확한 정보 표시
                     statusDisplay.classList.replace('bg-indigo-500', 'bg-red-500');
-                    statusDisplay.textContent = `키보드 열림: ${keyboardHeight}px. OffsetTop: ${offsetTop}px. 상/하 Fixed UI 고정됨.`;
+                    statusDisplay.textContent = `키보드 열림: ${keyboardHeight}px. OffsetTop: ${Math.floor(offsetTop)}px. Fixed UI 고정됨.`;
                 } else {
                     fixedContainer.style.transform = 'translateY(0)';
                     statusDisplay.classList.replace('bg-red-500', 'bg-indigo-500');
@@ -126,12 +128,14 @@
             }
         }
         
-        // 입력 필드 스크롤 보정 로직 구현
+        // 3단계: 입력 필드 스크롤 보정 로직 구현
         function scrollToInputIntoView(inputElement) {
             
             // 지연 시간을 350ms로 늘려 브라우저의 레이아웃 확정 시간을 더 확보
             setTimeout(() => {
-                if (!window.visualViewport || getKeyboardHeight() === 0) return;
+                if (!window.visualViewport |
+
+| getKeyboardHeight() === 0) return;
 
                 const inputRect = inputElement.getBoundingClientRect();
                 
@@ -147,7 +151,7 @@
                 const distanceToScroll = currentInputBottomVV - targetInputBottomVV;
 
                 if (distanceToScroll > 0) {
-                    // Layout Viewport 스크롤 실행
+                    // Layout Viewport 스크롤 실행 [1]
                     const newScrollY = window.scrollY + distanceToScroll;
                     
                     window.scrollTo({
@@ -166,11 +170,11 @@
 
         if (window.visualViewport) {
             // Visual Viewport 이벤트를 사용하여 Fixed UI 위치를 조정합니다.
-            window.visualViewport.addEventListener('resize', handleFixedElementCorrection);
-            window.visualViewport.addEventListener('scroll', handleFixedElementCorrection);
+            window.visualViewport.addEventListener('resize', handleFixedElementCorrection); //
+            window.visualViewport.addEventListener('scroll', handleFixedElementCorrection); //
             
             // Layout Viewport 스크롤 중에도 Fixed UI가 고정된 것처럼 보이도록 보조
-            document.addEventListener('scroll', handleFixedElementCorrection);
+            document.addEventListener('scroll', handleFixedElementCorrection); // [2]
 
             function handleFocus(event) {
                 // 키보드 등장 및 초기 Fixed UI 보정을 위한 짧은 지연 실행
