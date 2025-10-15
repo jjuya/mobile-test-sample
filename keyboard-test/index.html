@@ -173,7 +173,7 @@
             if (fixedContainer) {
                 if (keyboardHeight > 0) {
                     // 키보드 높이만큼 올려 Bottom Bar가 Visual Viewport의 하단에 정확히 앵커링되도록 합니다.
-                    const totalTransformBottom = keyboardHeight + offsetTop; 
+                    const totalTransformBottom = keyboardHeight; 
                     fixedContainer.style.transform = `translateY(-${totalTransformBottom}px)`;
                     
                     statusDisplay.classList.replace('bg-indigo-500', 'bg-red-500');
