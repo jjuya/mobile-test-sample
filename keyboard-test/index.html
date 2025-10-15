@@ -143,196 +143,64 @@
         const safetyMargin = 15; // 입력 필드와 Fixed UI/키보드 사이에 확보할 최소 여백 (px)
 
         /**
-         * OSK가 차지하는 높이를 계산합니다.
+         * 모바일 가상 키보드가 차지하는 높이를 계산합니다.
          * @returns {number} 키보드 높이 (CSS 픽셀)
          */
         function getKeyboardHeight() {
             // Layout Viewport (window.innerHeight)와 Visual Viewport (window.visualViewport.height)의 차이
-            const keyboardHeight = window.innerHeight - (window.visualViewport?.height?? window.innerHeight);
-            return Math.max(0, Math.floor(keyboardHeight));
+            if (window.visualViewport) {
+                return window.innerHeight - window.visualViewport.height;
+            }
+
+            return 0;
         }
 
         /**
-         * Fixed UI 요소의 위치를 OSK 및 스크롤에 맞춰 보정하고, 모달 높이를 조정합니다.
+         * Fixed 요소 위치 조정 및 모달 높이/위치 조정
+         * 이 함수는 Visual Viewport의 resize, scroll 이벤트에 반응하여 실행됩니다.
          */
         function handleFixedElementCorrection() {
             if (!window.visualViewport) return;
-
-            const keyboardHeight = getKeyboardHeight();
-            // Layout Viewport에 대한 Visual Viewport의 오프셋 (스크롤 시 변경됨)
-            const offsetTop = window.visualViewport.offsetTop?? 0; 
             
-            // 1. Status Display (상단 바) 위치 보정
+            const keyboardHeight = getKeyboardHeight();
+
+            // Layout Viewport(LV)에 대한 Visual Viewport(VV)의 offsetTop 값
+            const offsetTop = window.visualViewport.offsetTop || 0;
+
             if (statusDisplay) {
-                // 상단 고정 요소가 LV 스크롤에 의해 밀려 올라가는 것을 방지하기 위해 
-                // offsetTop 만큼 아래로 이동시켜 VV 상단에 고정되도록 합니다.
+                // 상단 Fixed 요소가 LV 스크롤에 의해 밀려 올라가는 것을 방지하기 위해,
+                // offsetTop 만큼 아래로 내려서 VV 상단에 앵커링되도록 보정합니다.
                 statusDisplay.style.transform = `translateY(${offsetTop}px)`;
             }
 
-            // 2. Fixed Container (하단 바) 위치 보정 
             if (fixedContainer) {
                 if (keyboardHeight > 0) {
-                    // 키보드 높이만큼 올려 Bottom Bar가 Visual Viewport의 하단에 정확히 앵커링되도록 합니다.
-                    const totalTransformBottom = keyboardHeight; 
-                    fixedContainer.style.transform = `translateY(-${totalTransformBottom}px)`;
-                    
+                    // 하단 Fixed UI는 'bottom: 0'을 기준으로 하므로,
+                    // 키보드 높이만큼만 올려줍니다. offsetTop을 더하면 스크롤 시 밀려 올라갑니다.
+                    fixedContainer.style.transform = `translateY(-${keyboardHeight}px)`;
+
                     statusDisplay.classList.replace('bg-indigo-500', 'bg-red-500');
                     statusDisplay.textContent = `키보드 열림: ${keyboardHeight}px. OffsetTop: ${offsetTop}px. 상/하 Fixed UI 고정됨.`;
-                } else {
-                    fixedContainer.style.transform = 'translateY(0)';
-                    statusDisplay.classList.replace('bg-red-500', 'bg-indigo-500');
-                    statusDisplay.textContent = '키보드 닫힘. Fixed UI 위치 초기화.';
-                }
-            }
-        }
-
-        /**
-         * 모달 높이를 조정합니다.
-         */
-        function handleModalElementCorrection() {
-            if (!window.visualViewport) return;
-
-            const offsetTop = window.visualViewport.offsetTop?? 0; 
-
-            if (modalContainer.classList.contains('is-open')) {
-                // 모달 컨테이너의 높이를 Visual Viewport 높이와 동일하게 설정합니다.
-                modalContainer.style.height = `${window.visualViewport.height}px`;
-                // 모달을 VV 상단에 고정되도록 top 위치 보정
-                modalContainer.style.top = `${offsetTop}px`;
-                
-                // 모달 내부 Input에 포커스가 있다면 스크롤 보정을 실행합니다.
-                const activeElement = document.activeElement;
-                if (activeElement && modalContainer.contains(activeElement)) {
-                    scrollToInputIntoView(activeElement, true); 
                 }
             } else {
-                // 모달이 닫혀있을 경우 높이/위치 초기화
-                modalContainer.style.height = '100vh';
-                modalContainer.style.top = '0';
+                fixedContainer.style.transform = 'translateY(0)';
+                statusDisplay.classList.replace('bg-red-500', 'bg-indigo-500');
+                statusDisplay.textContent = '키보드 닫힘. Fixed UI 위치 초기화.';
             }
         }
-        
-        /**
-         * 입력 필드가 키보드 위에 보이도록 Layout/모달 스크롤 위치를 정밀하게 보정합니다.
-         * @param {HTMLElement} inputElement - 스크롤 보정 대상 입력 필드
-         * @param {boolean} isModalInput - 모달 내부 입력 필드인지 여부
-         */
-        function scrollToInputIntoView(inputElement, isModalInput = false) {
-            
-            // Fixed UI 위치 조정이 완료될 시간을 충분히 부여
-            setTimeout(() => {
-                if (!window.visualViewport || getKeyboardHeight() === 0) return;
-
-                const inputRect = inputElement.getBoundingClientRect();
-                
-                let bottomFixedElementHeight = 0;
-                if (!isModalInput) {
-                    // 모달이 아닐 경우, 하단 Fixed UI의 높이를 고려
-                    bottomFixedElementHeight = fixedContainer.offsetHeight;
-                } 
-                // 모달 내부일 경우, 모달이 VV에 맞춰 이미 축소되었으므로, 별도의 하단 Fixed 높이 고려 X
-
-                // 1. Visual Viewport 내에서 입력 필드의 이상적인 '하단' 위치 계산:
-                // VV 높이 - 키보드 높이 - Fixed UI 높이 - 안전 여백
-                const targetInputBottomVV = window.visualViewport.height - getKeyboardHeight() - bottomFixedElementHeight - safetyMargin;
-                
-                // 2. 현재 입력 필드의 '하단' 위치 (Visual Viewport 기준)
-                const currentInputBottomVV = inputRect.bottom;
-                
-                // 3. 목표 위치에 도달하기 위해 필요한 스크롤 거리 계산
-                const distanceToScroll = currentInputBottomVV - targetInputBottomVV;
-
-                if (distanceToScroll > 0) {
-                    if (!isModalInput) {
-                         // 4. Layout Viewport의 새로운 스크롤 Y 좌표를 계산하여 스크롤 실행 [2]
-                        const newScrollY = window.scrollY + distanceToScroll;
-                        
-                        window.scrollTo({
-                            top: newScrollY,
-                            behavior: 'smooth'
-                        });
-                    } else {
-                        // 모달 내부 스크롤 (Layout Viewport가 아닌 모달 콘텐츠 스크롤)
-                        const modalContent = document.getElementById('modal-content');
-                        if (modalContent) {
-                            // 모달 내부의 스크롤 위치를 조정하여 입력 필드를 위로 올림
-                            modalContent.scrollTop += distanceToScroll;
-                        }
-                    }
-                }
-                
-            }, 250); 
-        }
-        
-        // ----------------------------------------------------
-        // 모달 관리 함수
-        // ----------------------------------------------------
-        function openModal() {
-            modalContainer.classList.add('is-open');
-            // 모달 열림 시 body 스크롤 잠금 (UX 개선 및 LV 스크롤 간섭 방지)
-            document.body.style.overflow = 'hidden';
-            handleModalElementCorrection(); 
-        }
-
-        function closeModal() {
-            modalContainer.classList.remove('is-open');
-            document.body.style.overflow = ''; // body 스크롤 잠금 해제
-            handleModalElementCorrection(); 
-        }
-
-        // ----------------------------------------------------
-        // 이벤트 리스너 등록
-        // ----------------------------------------------------
 
         if (window.visualViewport) {
-            // Visual Viewport 이벤트를 사용하여 Fixed UI 위치를 조정하고 모달 높이를 조정합니다.
-            window.visualViewport.addEventListener('resize', () =>{
-                handleFixedElementCorrection();
-                handleModalElementCorrection();
-            });
-            window.visualViewport.addEventListener('scroll', () =>{
-                handleFixedElementCorrection();
-                handleModalElementCorrection();
-            });
+            // Visual Viewport 이벤트: 키보드 크기/스크롤 변화 감지 [2]
+            window.visualViewport.addEventListener('resize', handleFixedElementCorrection);
+            window.visualViewport.addEventListener('scroll', handleFixedElementCorrection);
             
             // Layout Viewport 스크롤 중에도 Fixed UI가 고정된 것처럼 보이도록 보조
-            document.addEventListener('scroll', () =>{
-                handleFixedElementCorrection();
-                handleModalElementCorrection();
-            });
-
-            function handleFocus(event) {
-                // 1. Fixed UI 위치 보정 시작 (키보드 높이 감지)
-                setTimeout(() =>{
-                    handleFixedElementCorrection();
-                    handleModalElementCorrection();
-                }, 50);
-
-                // 2. 스크롤 보정이 필요한 Input 필드 판단
-                const targetId = event.target.id;
-                if (targetId === 'last_input') {
-                    scrollToInputIntoView(event.target, false);
-                } else if (event.target.closest('#modal-container')) {
-                    // 모달 내부 입력은 별도 스크롤 로직 처리
-                    scrollToInputIntoView(event.target, true);
-                }
-            }
-            
-            // 모든 Input 필드에 포커스 리스너 등록
-            allInputs.forEach(input => input.addEventListener('focus', handleFocus));
-            
-            // 모달 열기 버튼 이벤트
-            openModalBtn.addEventListener('click', openModal);
-        
-        } else {
-            statusDisplay.classList.replace('bg-indigo-500', 'bg-red-700');
-            statusDisplay.textContent = 'Visual Viewport API를 지원하지 않아 JS 조정이 어렵습니다.';
+            document.addEventListener('scroll', handleFixedElementCorrection);
         }
 
-        // 초기 로드 시 Fixed UI의 위치를 한 번 보정하고, 스크롤을 맨 위로 이동
+         // 초기 로드 시 스크롤 위치 초기화 및 Fixed UI 초기 보정
         window.scrollTo(0, 0);
         handleFixedElementCorrection();
-        handleModalElementCorrection();
     </script>
 </body>
 </html>
