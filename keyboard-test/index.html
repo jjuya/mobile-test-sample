@@ -177,7 +177,7 @@
                 if (keyboardHeight > 0) {
                     // 하단 Fixed UI는 'bottom: 0'을 기준으로 하므로,
                     // 키보드 높이만큼만 올려줍니다. offsetTop을 더하면 스크롤 시 밀려 올라갑니다.
-                    fixedContainer.style.transform = `translateY(-${keyboardHeight}px)`;
+                    fixedContainer.style.transform = `translateY(-${keyboardHeight + offsetTop}px)`;
 
                     statusDisplay.classList.replace('bg-indigo-500', 'bg-red-500');
                     statusDisplay.textContent = `키보드 열림: ${keyboardHeight}px. OffsetTop: ${offsetTop}px. 상/하 Fixed UI 고정됨.`;
@@ -252,7 +252,7 @@
         }
 
         if (window.visualViewport) {
-            // Visual Viewport 이벤트: 키보드 크기/스크롤 변화 감지 [2]
+            // Visual Viewport 이벤트: 키보드 크기/스크롤 변화 감지
             window.visualViewport.addEventListener('resize', handleFixedElementCorrection);
             window.visualViewport.addEventListener('scroll', handleFixedElementCorrection);
             
