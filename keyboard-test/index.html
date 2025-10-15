@@ -76,7 +76,7 @@
         Visual Viewport 상태 모니터링 중...
     </div>
     
-    <main class="container mx-auto p-4 flex-grow">
+    <main class="container mx-auto px-4 py-12 flex-grow">
         <h1 class="text-3xl font-bold mb-4 text-gray-800">스크롤 가능한 콘텐츠 영역</h1>
         
         <button id="open-modal-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg shadow-xl mb-6">
@@ -172,8 +172,7 @@
             // 2. Fixed Container (하단 바) 위치 보정 
             if (fixedContainer) {
                 if (keyboardHeight > 0) {
-                    // 키보드 높이만큼 올리고, LV 스크롤 오프셋(offsetTop)만큼 추가로 올려
-                    // Bottom Bar가 Visual Viewport의 하단에 정확히 앵커링되도록 합니다.
+                    // 키보드 높이만큼 올려 Bottom Bar가 Visual Viewport의 하단에 정확히 앵커링되도록 합니다.
                     const totalTransformBottom = keyboardHeight + offsetTop; 
                     fixedContainer.style.transform = `translateY(-${totalTransformBottom}px)`;
                     
@@ -185,8 +184,16 @@
                     statusDisplay.textContent = '키보드 닫힘. Fixed UI 위치 초기화.';
                 }
             }
-            
-            // 3. 모달 높이 보정 (모달이 열려 있을 경우)
+        }
+
+        /**
+         * 모달 높이를 조정합니다.
+         */
+        function handleModalElementCorrection() {
+            if (!window.visualViewport) return;
+
+            const offsetTop = window.visualViewport.offsetTop?? 0; 
+
             if (modalContainer.classList.contains('is-open')) {
                 // 모달 컨테이너의 높이를 Visual Viewport 높이와 동일하게 설정합니다.
                 modalContainer.style.height = `${window.visualViewport.height}px`;
@@ -264,13 +271,13 @@
             modalContainer.classList.add('is-open');
             // 모달 열림 시 body 스크롤 잠금 (UX 개선 및 LV 스크롤 간섭 방지)
             document.body.style.overflow = 'hidden';
-            handleFixedElementCorrection(); 
+            handleModalElementCorrection(); 
         }
 
         function closeModal() {
             modalContainer.classList.remove('is-open');
             document.body.style.overflow = ''; // body 스크롤 잠금 해제
-            handleFixedElementCorrection(); 
+            handleModalElementCorrection(); 
         }
 
         // ----------------------------------------------------
@@ -279,15 +286,27 @@
 
         if (window.visualViewport) {
             // Visual Viewport 이벤트를 사용하여 Fixed UI 위치를 조정하고 모달 높이를 조정합니다.
-            window.visualViewport.addEventListener('resize', handleFixedElementCorrection);
-            window.visualViewport.addEventListener('scroll', handleFixedElementCorrection);
+            window.visualViewport.addEventListener('resize', () =>{
+                handleFixedElementCorrection();
+                handleModalElementCorrection();
+            });
+            window.visualViewport.addEventListener('scroll', () =>{
+                handleFixedElementCorrection();
+                handleModalElementCorrection();
+            });
             
             // Layout Viewport 스크롤 중에도 Fixed UI가 고정된 것처럼 보이도록 보조
-            document.addEventListener('scroll', handleFixedElementCorrection);
+            document.addEventListener('scroll', () =>{
+                handleFixedElementCorrection();
+                handleModalElementCorrection();
+            });
 
             function handleFocus(event) {
                 // 1. Fixed UI 위치 보정 시작 (키보드 높이 감지)
-                setTimeout(handleFixedElementCorrection, 50);
+                setTimeout(() =>{
+                    handleFixedElementCorrection();
+                    handleModalElementCorrection();
+                }, 50);
 
                 // 2. 스크롤 보정이 필요한 Input 필드 판단
                 const targetId = event.target.id;
@@ -313,6 +332,7 @@
         // 초기 로드 시 Fixed UI의 위치를 한 번 보정하고, 스크롤을 맨 위로 이동
         window.scrollTo(0, 0);
         handleFixedElementCorrection();
+        handleModalElementCorrection();
     </script>
 </body>
 </html>
