@@ -228,21 +228,15 @@
             // 1. Fixed Bottom UI 보정 (#fixed-container) 로직
             // ----------------------------------------------------------------------------------
             // LV 스크롤 상쇄(-currentScrollY)를 제거하고, VV 앵커링만을 사용합니다.
-            let transformY = 0; 
+            let transformY = offsetTop; 
 
             // VV 앵커링 보정: Fixed UI를 LV 기준으로 VV 하단에 붙입니다.
             if (keyboardHeight > 0) {
                 // 키보드 있을 때: 키보드 높이만큼 위로 밀어 올려 VV 하단에 앵커링
                 transformY += -keyboardHeight;
-            } else {
-                // 키보드 없을 때 (툴바 이동 보정): 툴바 접힘으로 VV가 위로 이동한 것을 상쇄하기 위해
-                // Fixed UI를 아래로 움직여야 함.
-                transformY += offsetTop; // ✅ 올바른 부호: 양수
             }
             
-            requestAnimationFrame(() => {
-                 fixedContainer.style.transform = `translateY(${transformY}px)`;
-            });
+            fixedContainer.style.transform = `translateY(${transformY}px)`;
             
             // ----------------------------------------------------------------------------------
             // 2. Visual Viewport 경계 마커 및 상태 업데이트
