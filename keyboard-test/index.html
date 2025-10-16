@@ -201,16 +201,19 @@
             }
 
             const keyboardHeight = getKeyboardHeight();
-            const offsetTop = visualViewport.offsetTop; 
+            const vvOffsetTop = visualViewport.offsetTop; 
             const vvPageTop = visualViewport.pageTop; // 안정적인 LV 스크롤 값
             const vvWidth = visualViewport.width;
+
+            const viewportTopGap = parseInt(vvPageTop - vvOffsetTop);
+            const scrollY = window.scrollY;
 
             // ----------------------------------------------------------------------------------
             // 1. Fixed Bottom UI 보정 (#fixed-container) 로직
             // ----------------------------------------------------------------------------------
             
             // 1단계: LV 스크롤 상쇄 (스크롤 시 Fixed UI가 이탈하는 것 방지)
-            let transformY = -vvPageTop; 
+            let transformY = -scrollY; 
 
             // 2단계: Visual Viewport 앵커링 보정 (키보드 또는 툴바 이동에 의해 생기는 VV 오차 보정)
             if (keyboardHeight === 0) {
