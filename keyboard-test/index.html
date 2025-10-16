@@ -219,7 +219,7 @@
             if (keyboardHeight === 0) {
                 // 키보드 없을 때: VV가 위로 이동(offsetTop > 0)하면 Fixed UI도 위로 이동
                 // 이를 상쇄하기 위해 Fixed UI를 아래로 움직여야 함 (양수 transformY)
-                transformY += offsetTop;
+                transformY += vvOffsetTop;
             } else {
                 // 키보드 있을 때: 키보드 높이만큼 위로 밀어 올려 VV 하단에 앵커링
                 transformY += -keyboardHeight;
