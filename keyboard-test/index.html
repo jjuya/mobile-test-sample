@@ -232,10 +232,10 @@
             // ----------------------------------------------------------------------------------
             
             // Fixed Top UI (#status) 보정: 상단 UI는 offsetTop만큼 내려줘야 VV 상단에 앵커링됩니다.
-            statusDisplay.style.transform = `translateY(${offsetTop}px)`;
+            statusDisplay.style.transform = `translateY(${vvOffsetTop}px)`;
             
             // VV 하단 경계 마커 (#vv-bottom-marker) 업데이트 (파란색 선)
-            const vvBottomPosition = visualViewport.height + offsetTop;
+            const vvBottomPosition = visualViewport.height + vvOffsetTop;
             vvBottomMarker.style.top = `${vvBottomPosition}px`;
             vvBottomMarker.style.transform = `translateY(-100%)`; 
             vvBottomMarker.style.width = `${vvWidth}px`; 
@@ -246,7 +246,7 @@
             statusDisplay.innerText = 
                 `VV Height: ${visualViewport.height.toFixed(0)}px | ` + 
                 `KBD Height: ${keyboardHeight}px | ` +
-                `VV OffsetTop: ${offsetTop.toFixed(0)}px | ` +
+                `VV OffsetTop: ${vvOffsetTop.toFixed(0)}px | ` +
                 `Final Transform: translateY(${transformY.toFixed(0)}px)`;
 
 
