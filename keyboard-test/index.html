@@ -212,17 +212,10 @@
             // 1. Fixed Bottom UI 보정 (#fixed-container) 로직
             // ----------------------------------------------------------------------------------
             
-            // 1단계: LV 스크롤 상쇄 (스크롤 시 Fixed UI가 이탈하는 것 방지)
-            let transformY = -scrollY; 
+            let transformY = vvOffsetTop;
 
-            // 2단계: Visual Viewport 앵커링 보정 (키보드 또는 툴바 이동에 의해 생기는 VV 오차 보정)
-            if (keyboardHeight === 0) {
-                // 키보드 없을 때: VV가 위로 이동(offsetTop > 0)하면 Fixed UI도 위로 이동
-                // 이를 상쇄하기 위해 Fixed UI를 아래로 움직여야 함 (양수 transformY)
-                transformY += vvOffsetTop;
-            } else {
-                // 키보드 있을 때: 키보드 높이만큼 위로 밀어 올려 VV 하단에 앵커링
-                transformY += -keyboardHeight;
+            if (keyboardHeight > 0) {
+                transformY -= keyboardHeight; 
             }
 
             fixedContainer.style.transform = `translateY(${transformY}px)`;
