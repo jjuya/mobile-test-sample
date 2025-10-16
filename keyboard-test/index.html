@@ -221,6 +221,8 @@
                 // 키보드 있을 때: 키보드 높이만큼 위로 밀어 올려 VV 하단에 앵커링
                 transformY += -keyboardHeight;
             }
+
+            fixedContainer.style.transform = `translateY(${transformY}px)`;
         
             // ----------------------------------------------------------------------------------
             // 2. Visual Viewport 경계 마커 및 상태 업데이트
