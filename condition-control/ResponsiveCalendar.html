@@ -45,8 +45,8 @@
 
         /* 태블릿 뷰 프레임 오버라이드 */
         .tablet-view .phone-frame {
-            width: 768px; /* 태블릿 뷰 너비 */
-            height: 667px; 
+            width: 1180px; /* 태블릿 뷰 너비 */
+            height: 768px; 
         }
         
         .phone-content {
@@ -99,6 +99,24 @@
         }
 
         /* ----------------------------------------------------- */
+        /* [태블릿 뷰] 오버라이드 (2단 분할 레이아웃) */
+        /* ----------------------------------------------------- */
+        .tablet-view .mobile-popup-content {
+            /* 고정 크기 및 중앙 배치 효과 */
+            min-width: 390px;
+            width: auto;
+            max-height: 500px; 
+            border-radius: 0.5rem; /* 모서리 둥글게 */
+            /* 태블릿 뷰에서는 오버레이가 flex-end 대신 center로 동작할 경우, */
+            /* transform: translateY(0)만으로 중앙에 위치하게 조정될 수 있음. */
+        }
+
+        .tablet-view .mobile-popup-overlay {
+            align-items: center; /* 팝업을 중앙에 배치 */
+        }
+        
+
+        /* ----------------------------------------------------- */
         /* 달력 렌더링 영역 스타일 */
         /* ----------------------------------------------------- */
         
@@ -106,18 +124,17 @@
         .calendar-multi-view {
             display: grid;
             grid-template-columns: repeat(2, 1fr); /* 50% / 50% 분할 */
-            gap: 1rem;
-            padding: 1rem;
             overflow-y: auto; 
         }
         .calendar-container {
             border-radius: 0.5rem;
             display: flex;
             flex-direction: column;
+            padding: 0 12px;
         }
         /* 싱글 달력 스타일 */
         .calendar-single-view {
-            padding: 0 1rem;
+            padding: 0;
         }
 
         /* ----------------------------------------------------- */
@@ -210,7 +227,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 1rem;
+            padding: 12px 0;
             border-bottom: 1px solid #e5e7eb;
             font-weight: bold;
             color: #374151;
@@ -251,11 +268,16 @@
 
         /* 날짜 셀 및 주차 번호 셀 공통 스타일 */
         .calendar-day, .calendar-week-number {
-            padding: 0.75rem 0.5rem;
+            width: 52px;
+            height: 48px;
+            padding: 14px 10px;
             cursor: pointer;
             border-radius: 50%;
             transition: background-color 0.2s;
             position: relative;
+
+            line-height: 20px;
+            font-size: 16px;
         }
 
         .calendar-day:hover:not(.empty-day):not(.selected-range),
@@ -451,7 +473,7 @@
             모바일 뷰 (375px)
         </button>
         <button id="tabletViewButton" class="px-4 py-2 rounded-md font-semibold text-gray-700 bg-gray-200 hover:bg-gray-300">
-            태블릿 뷰 (768px)
+            태블릿 뷰 (1180px)
         </button>
     </div>
 
