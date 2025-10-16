@@ -54,7 +54,7 @@
             border: 3px dashed rgba(255, 0, 0, 0.8); /* Layout Viewport 경계 */
             box-sizing: border-box;
             pointer-events: none;
-            z-index: 1;
+            z-index: 100;
         }
 
         /* Visual Viewport 하단 경계 마커 (파란색 실선) */
@@ -62,9 +62,9 @@
             position: fixed; /* VV에 고정되어야 함 */
             left: 0;
             right: 0;
-            height: 3px;
+            height: 5px;
             background-color: rgba(0, 191, 255, 0.9); /* Visual Viewport 경계 */
-            z-index: 40;
+            z-index: 99;
             pointer-events: none;
             will-change: top;
         }
