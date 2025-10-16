@@ -199,67 +199,63 @@
          */
         const updateFixedUI = () => {
             if (!visualViewport) {
-                // visualViewport 미지원 시 마커와 상태 업데이트
                 updateLayoutViewportMarker();
                 statusDisplay.innerText = "Visual Viewport API 미지원. 고정 UI 보정 기능 비활성화.";
                 return;
             }
 
             const keyboardHeight = getKeyboardHeight();
-            const vvOffsetTop = visualViewport.offsetTop;
-            const vvPageTop = visualViewport.pageTop; // 스크롤 중에도 안정적으로 갱신되는 값
-            const currentScrollY = window.scrollY; // 현재 Layout Viewport 스크롤 값
-
+            const offsetTop = visualViewport.offsetTop; 
+            const currentScrollY = window.scrollY; // 불안정한 LV 스크롤 값 (상태 표시용으로 유지)
+            
+            const vvPageTop = visualViewport.pageTop; // **스크롤 중에도 안정적으로 갱신되는 값**
             const vvWidth = visualViewport.width;
 
             // ----------------------------------------------------------------------------------
             // 1. Fixed Bottom UI 보정 (#fixed-container) 로직
             // ----------------------------------------------------------------------------------
-            // Fixed UI를 Layout Viewport가 아닌, 사용자가 실제로 보는 Visual Viewport (VV)의 하단에 정확히 고정시킨다.
-            // position: fixed 요소는 Layout Viewport에 묶여있어, 키보드 등장이나 브라우저 툴바 변화 시 VV의 움직임을 따라가지 못한다.            
+            // **핵심 수정: LV 스크롤 상쇄에 window.scrollY 대신 visualViewport.pageTop 사용**
             
-            // 1. LV 스크롤 상쇄: 스크롤 소비 구간에서도 정확함
-            let transformY = -vvPageTop; 
+            let transformY = -vvPageTop; // LV 스크롤 상쇄 (스크롤 소비 구간에서도 정확함)
 
             // 2. Visual Viewport 앵커링 보정: 
             if (keyboardHeight === 0) {
                 // 키보드 없을 때: 브라우저 툴바 이동(`offsetTop`)을 상쇄하여 VV 하단에 앵커링
-                transformY += -vvOffsetTop; 
+                transformY += -offsetTop; 
             } else {
                 // 키보드 있을 때: 키보드 높이만큼 위로 밀어 올려 VV 하단에 앵커링
                 transformY += -keyboardHeight;
             }
-
-            fixedContainer.style.transform = `translateY(${transformY}px)`;
+            
+            // requestAnimationFrame을 사용하여 렌더링 주기에 맞추어 적용 (선택적 안정화)
+            requestAnimationFrame(() => {
+                 fixedContainer.style.transform = `translateY(${transformY}px)`;
+            });
             
             // ----------------------------------------------------------------------------------
-            // 2. Visual Viewport 경계 마커 업데이트
+            // 2. Visual Viewport 경계 마커 및 상태 업데이트
             // ----------------------------------------------------------------------------------
             
             // Fixed Top UI (#status) 보정: 상단 UI는 offsetTop만큼 내려줘야 VV 상단에 앵커링됩니다.
-            statusDisplay.style.transform = `translateY(${vvOffsetTop}px)`;
-
+            statusDisplay.style.transform = `translateY(${offsetTop}px)`;
+            
             // VV 하단 경계 마커 (#vv-bottom-marker) 업데이트 (파란색 선)
-            // top 위치 = VV의 높이 (visualViewport.height) + VV의 상단 오프셋 (visualViewport.offsetTop)
-            const vvBottomPosition = visualViewport.height + vvOffsetTop;
+            const vvBottomPosition = visualViewport.height + offsetTop;
             vvBottomMarker.style.top = `${vvBottomPosition}px`;
-            // 마커의 높이가 3px이므로, 경계선에 정확히 붙도록 위로 3px (-100% * 3px) 이동
             vvBottomMarker.style.transform = `translateY(-100%)`; 
-            vvBottomMarker.style.width = `${vvWidth}px`; // VV의 너비에 맞춤
+            vvBottomMarker.style.width = `${vvWidth}px`; 
 
-            // Layout Viewport 마커 업데이트
             updateLayoutViewportMarker();
 
             // 3. 상태 표시 업데이트
             statusDisplay.innerText = 
                 `VV Height: ${visualViewport.height.toFixed(0)}px | ` + 
                 `KBD Height: ${keyboardHeight}px | ` +
-                `VV OffsetTop: ${vvOffsetTop.toFixed(0)}px | ` +
-                `VV Bottom: ${vvBottomPosition.toFixed(0)}px | ` +
-                `Fixed UI Transform: translateY(${transformY.toFixed(0)}px)`;
+                `VV OffsetTop: ${offsetTop.toFixed(0)}px | ` +
+                `Transform: translateY(${transformY.toFixed(0)}px) (pageTop base) | ` + 
+                `LV Scroll (window.scrollY): ${currentScrollY.toFixed(0)}px`; // window.scrollY 값은 비교용
 
 
-            // 모달이 열려 있다면 모달도 보정
             if (modalContainer.classList.contains('is-open')) {
                 updateModalPosition();
             }
@@ -288,8 +284,6 @@
          * 입력 필드가 Fixed UI나 키보드에 가려지지 않도록 스크롤합니다. (모바일 환경 전용)
          */
         const smoothScrollToInput = (inputEl) => {
-            // 이 함수는 모바일 환경에서만 의미가 있습니다.
-
             const inputRect = inputEl.getBoundingClientRect();
             const fixedRect = fixedContainer.getBoundingClientRect();
             const keyboardHeight = getKeyboardHeight();
@@ -298,10 +292,8 @@
             
             let blockingTop;
             if (keyboardHeight > 0) {
-                // 키보드가 있을 때: Visual Viewport의 하단 (키보드 상단)
                 blockingTop = visualViewport.height + visualViewport.offsetTop;
             } else {
-                // 키보드가 없을 때: Fixed UI의 상단
                 blockingTop = fixedRect.top;
             }
             
@@ -309,7 +301,6 @@
             if (inputBottom + safetyMargin > blockingTop) {
                 const scrollAmount = (inputBottom + safetyMargin) - blockingTop;
                 
-                // 스크롤 양이 무의미하거나, 브라우저 스크롤 한계에 도달했다면 실행하지 않음
                 if (scrollAmount > 5) { 
                     window.scrollBy({
                         top: scrollAmount,
