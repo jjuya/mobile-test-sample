@@ -212,13 +212,10 @@
             const vvWidth = visualViewport.width;
 
             // ----------------------------------------------------------------------------------
-            // **1. Fixed Bottom UI 보정 (#fixed-container) 로직**
+            // 1. Fixed Bottom UI 보정 (#fixed-container) 로직
             // ----------------------------------------------------------------------------------
-            /*
-             * Goal: Fixed UI를 Layout Viewport가 아닌, 사용자가 실제로 보는 Visual Viewport (VV)의 하단에 정확히 고정시킨다.
-             * * 배경: position: fixed 요소는 Layout Viewport에 묶여있어, 키보드 등장이나 브라우저 툴바 변화 시 VV의 움직임을 따라가지 못한다.
-             */
-            
+            // Fixed UI를 Layout Viewport가 아닌, 사용자가 실제로 보는 Visual Viewport (VV)의 하단에 정확히 고정시킨다.
+            // position: fixed 요소는 Layout Viewport에 묶여있어, 키보드 등장이나 브라우저 툴바 변화 시 VV의 움직임을 따라가지 못한다.            
             
             // 1. LV 스크롤 상쇄: Fixed UI가 LV 스크롤을 따라가지 못해 밀려나는 현상을 방지
             let transformY = -currentScrollY; 
@@ -231,11 +228,11 @@
                 // 키보드 있을 때: 키보드 높이만큼 위로 밀어 올려 VV 하단에 앵커링
                 transformY += -keyboardHeight;
             }
-            
+
             fixedContainer.style.transform = `translateY(${transformY}px)`;
             
             // ----------------------------------------------------------------------------------
-            // **2. Visual Viewport 경계 마커 업데이트**
+            // 2. Visual Viewport 경계 마커 업데이트
             // ----------------------------------------------------------------------------------
             
             // Fixed Top UI (#status) 보정: 상단 UI는 offsetTop만큼 내려줘야 VV 상단에 앵커링됩니다.
@@ -252,7 +249,7 @@
             // Layout Viewport 마커 업데이트
             updateLayoutViewportMarker();
 
-            // **3. 상태 표시 업데이트**
+            // 3. 상태 표시 업데이트
             statusDisplay.innerText = 
                 `VV Height: ${visualViewport.height.toFixed(0)}px | ` + 
                 `KBD Height: ${keyboardHeight}px | ` +
