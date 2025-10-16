@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
-    <title>Visual/Layout Viewport 시각화 및 Fixed UI 테스트</title>
+    <title>Visual/Layout Viewport 시각화 및 Fixed UI 최종 테스트</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         html { font-family: 'Inter', sans-serif; }
@@ -38,6 +38,11 @@
             font-size: 0.875rem;
             transition: none; 
             will-change: transform;
+            background-color: rgb(79 70 229 / var(--tw-bg-opacity)); 
+            color: white;
+            padding: 0.5rem;
+            text-align: center;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
         }
 
         /* Layout Viewport 경계 시각화 마커 (빨간색 점선) */
@@ -106,7 +111,7 @@
         <div class="bg-red-100 p-2 border border-red-400 rounded-lg text-sm mb-4">
             🔴 빨간색 점선: Layout Viewport (LV)의 경계 (CSS 레이아웃 기준 높이)입니다.
             <br>
-            🔵 파란색 선 & 상단바: Visual Viewport (VV)의 경계입니다. 키보드 등장 시 파란색 선이 위로 올라옵니다.
+            🔵 파란색 선 & 상단바: Visual Viewport (VV)의 경계입니다. 키보드 등장/툴바 접힘 시 VV의 경계선이 이동합니다.
         </div>
 
         <button id="open-modal-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg shadow-xl mb-6">
@@ -165,11 +170,9 @@
         const allInputs = document.querySelectorAll('input[type="text"]');
         const safetyMargin = 15;
         
-        // 시각화 마커 요소
         const layoutViewportMarker = document.getElementById('layout-viewport-marker');
         const vvBottomMarker = document.getElementById('vv-bottom-marker');
 
-        // 모달 관련
         const modalContainer = document.getElementById('modal-container');
         const openModalBtn = document.getElementById('open-modal-btn');
         let activeInput = null;
@@ -180,15 +183,8 @@
             return Math.max(0, Math.floor(keyboardHeight));
         }
 
-        /**
-         * @function updateLayoutViewportMarker
-         * Layout Viewport의 경계 (빨간색 점선)를 시각화합니다.
-         */
         const updateLayoutViewportMarker = () => {
-            // Layout Viewport의 높이는 window.innerHeight입니다.
             layoutViewportMarker.style.height = `${window.innerHeight}px`;
-            
-            // Layout Viewport 마커는 콘텐츠와 함께 스크롤되므로, 현재 스크롤 위치에 맞춰 top 위치를 보정합니다.
             layoutViewportMarker.style.transform = `translateY(${window.scrollY}px)`;
         };
 
@@ -206,32 +202,26 @@
 
             const keyboardHeight = getKeyboardHeight();
             const offsetTop = visualViewport.offsetTop; 
-            const currentScrollY = window.scrollY; // 불안정한 LV 스크롤 값 (상태 표시용으로 유지)
-            
-            const vvPageTop = visualViewport.pageTop; // **스크롤 중에도 안정적으로 갱신되는 값**
+            const vvPageTop = visualViewport.pageTop; // 안정적인 LV 스크롤 값
             const vvWidth = visualViewport.width;
 
             // ----------------------------------------------------------------------------------
             // 1. Fixed Bottom UI 보정 (#fixed-container) 로직
             // ----------------------------------------------------------------------------------
-            // **핵심 수정: LV 스크롤 상쇄에 window.scrollY 대신 visualViewport.pageTop 사용**
             
-            let transformY = -vvPageTop; // LV 스크롤 상쇄 (스크롤 소비 구간에서도 정확함)
+            // 1단계: LV 스크롤 상쇄 (스크롤 시 Fixed UI가 이탈하는 것 방지)
+            let transformY = -vvPageTop; 
 
-            // 2. Visual Viewport 앵커링 보정: 
+            // 2단계: Visual Viewport 앵커링 보정 (키보드 또는 툴바 이동에 의해 생기는 VV 오차 보정)
             if (keyboardHeight === 0) {
-                // 키보드 없을 때: 브라우저 툴바 이동(`offsetTop`)을 상쇄하여 VV 하단에 앵커링
-                transformY += -offsetTop; 
+                // 키보드 없을 때: VV가 위로 이동(offsetTop > 0)하면 Fixed UI도 위로 이동
+                // 이를 상쇄하기 위해 Fixed UI를 아래로 움직여야 함 (양수 transformY)
+                transformY += offsetTop;
             } else {
                 // 키보드 있을 때: 키보드 높이만큼 위로 밀어 올려 VV 하단에 앵커링
                 transformY += -keyboardHeight;
             }
-            
-            // requestAnimationFrame을 사용하여 렌더링 주기에 맞추어 적용 (선택적 안정화)
-            requestAnimationFrame(() => {
-                 fixedContainer.style.transform = `translateY(${transformY}px)`;
-            });
-            
+        
             // ----------------------------------------------------------------------------------
             // 2. Visual Viewport 경계 마커 및 상태 업데이트
             // ----------------------------------------------------------------------------------
@@ -252,8 +242,7 @@
                 `VV Height: ${visualViewport.height.toFixed(0)}px | ` + 
                 `KBD Height: ${keyboardHeight}px | ` +
                 `VV OffsetTop: ${offsetTop.toFixed(0)}px | ` +
-                `Transform: translateY(${transformY.toFixed(0)}px) (pageTop base) | ` + 
-                `LV Scroll (window.scrollY): ${currentScrollY.toFixed(0)}px`; // window.scrollY 값은 비교용
+                `Final Transform: translateY(${transformY.toFixed(0)}px)`;
 
 
             if (modalContainer.classList.contains('is-open')) {
@@ -262,14 +251,9 @@
         };
 
 
-        /**
-         * @function updateModalPosition
-         * 모달의 크기와 위치를 Visual Viewport에 맞춥니다.
-         */
         const updateModalPosition = () => {
             if (!visualViewport || !modalContainer.classList.contains('is-open')) return;
             
-            // 모달을 Visual Viewport의 크기와 위치에 맞춤
             modalContainer.style.height = `${visualViewport.height}px`;
             modalContainer.style.top = `${visualViewport.offsetTop}px`;
 
@@ -279,10 +263,6 @@
         }
 
 
-        /**
-         * @function smoothScrollToInput
-         * 입력 필드가 Fixed UI나 키보드에 가려지지 않도록 스크롤합니다. (모바일 환경 전용)
-         */
         const smoothScrollToInput = (inputEl) => {
             const inputRect = inputEl.getBoundingClientRect();
             const fixedRect = fixedContainer.getBoundingClientRect();
@@ -297,7 +277,6 @@
                 blockingTop = fixedRect.top;
             }
             
-            // 입력 필드 하단이 가리는 영역(blockingTop)을 '안전 여백'을 넘어섰는지 확인
             if (inputBottom + safetyMargin > blockingTop) {
                 const scrollAmount = (inputBottom + safetyMargin) - blockingTop;
                 
@@ -311,9 +290,6 @@
         }
 
 
-        /**
-         * @function openModal / closeModal
-         */
         const openModal = () => {
             modalContainer.classList.add('is-open');
             document.body.style.overflow = 'hidden';
@@ -323,7 +299,6 @@
         const closeModal = () => {
             modalContainer.classList.remove('is-open');
             document.body.style.overflow = '';
-            // 모달 닫을 때 스크롤 위치 보정 (iOS Safari에서 필요)
             if (visualViewport && visualViewport.offsetTop !== 0) {
                 window.scrollBy({ top: -visualViewport.offsetTop });
             }
@@ -334,7 +309,6 @@
         // 초기화 및 이벤트 리스너
         // ------------------------------------------------------------------
 
-        // 페이지 로드 후 실행
         window.addEventListener('load', () => {
             updateFixedUI();
             updateLayoutViewportMarker();
@@ -351,19 +325,15 @@
             window.addEventListener('resize', updateFixedUI);
         }
         
-        // 입력 필드 포커스 시 스크롤 보정 조건 추가 (PC 오작동 방지)
         allInputs.forEach(input => {
             input.addEventListener('focus', (e) => {
                 activeInput = e.target;
                 
-                // 모바일 환경을 판단: 핀치 줌이 되었거나 (scale != 1), 키보드가 나타났을 때 (height != innerHeight)
                 const isMobileEnvironment = (visualViewport && (window.innerHeight !== visualViewport.height || visualViewport.scale !== 1));
                 
                 if (!modalContainer.classList.contains('is-open') && isMobileEnvironment) {
-                    // 모바일 환경에서만 스크롤 보정 로직 실행
                     setTimeout(() => smoothScrollToInput(e.target), 100);
                 } 
-                // PC 환경에서는 브라우저의 기본 스크롤 동작에 맡김
             });
             input.addEventListener('blur', () => {
                 activeInput = null;
