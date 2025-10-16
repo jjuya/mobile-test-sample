@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
-    <title>Visual/Layout Viewport 시각화 및 Fixed UI 최종 테스트</title>
+    <title>Fixed UI 최종 테스트 (VV 앵커링 전용)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         html { font-family: 'Inter', sans-serif; }
@@ -51,23 +51,39 @@
             top: 0;
             left: 0;
             width: 100%;
-            border: 3px dashed rgba(255, 0, 0, 0.8); /* Layout Viewport 경계 */
+            border: 3px dashed rgba(255, 0, 0, 0.8);
             box-sizing: border-box;
             pointer-events: none;
-            z-index: 100;
+            z-index: 1000;
         }
 
         /* Visual Viewport 하단 경계 마커 (파란색 실선) */
         #vv-bottom-marker {
-            position: fixed; /* VV에 고정되어야 함 */
+            position: fixed;
             left: 0;
             right: 0;
-            height: 5px;
-            background-color: rgba(0, 191, 255, 0.9); /* Visual Viewport 경계 */
-            z-index: 99;
+            height: 3px;
+            background-color: rgba(0, 191, 255, 0.9);
+            z-index: 999;
             pointer-events: none;
             will-change: top;
         }
+
+        /* 중앙 고정 UI 스타일 */
+        #fixed-center-ui {
+            position: fixed;
+            top: 50%;
+            right: 16px;
+            background-color: #333;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px; /* pill shape */
+            font-weight: bold;
+            z-index: 70; 
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            white-space: nowrap;
+        }
+
 
         /* 모달 스타일 유지 */
         #modal-container {
@@ -105,13 +121,16 @@
         Visual Viewport 상태 모니터링 중...
     </div>
     
+    <div id="fixed-center-ui">fixed : Center</div>
+
+    
     <main class="container mx-auto px-4 py-12 flex-grow">
         <h1 class="text-3xl font-bold mb-4 text-gray-800">스크롤 가능한 콘텐츠 영역</h1>
         
         <div class="bg-red-100 p-2 border border-red-400 rounded-lg text-sm mb-4">
-            🔴 빨간색 점선: Layout Viewport (LV)의 경계 (CSS 레이아웃 기준 높이)입니다.
+            🔴 빨간색 점선: Layout Viewport (LV)의 경계입니다.
             <br>
-            🔵 파란색 선 & 상단바: Visual Viewport (VV)의 경계입니다. 키보드 등장/툴바 접힘 시 VV의 경계선이 이동합니다.
+            🔵 파란색 선 & 상단바: Visual Viewport (VV)의 경계입니다.
         </div>
 
         <button id="open-modal-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg shadow-xl mb-6">
@@ -191,7 +210,7 @@
 
         /**
          * @function updateFixedUI
-         * Visual Viewport의 변화(키보드/브라우저 UI)에 따라 고정 UI의 위치를 보정하고 마커를 업데이트합니다.
+         * Visual Viewport의 변화에 따라 Fixed UI의 위치를 보정합니다. (LV 스크롤 상쇄 로직 제거)
          */
         const updateFixedUI = () => {
             if (!visualViewport) {
@@ -201,34 +220,39 @@
             }
 
             const keyboardHeight = getKeyboardHeight();
-            const vvOffsetTop = visualViewport.offsetTop; 
-            const vvPageTop = visualViewport.pageTop; // 안정적인 LV 스크롤 값
+            const offsetTop = visualViewport.offsetTop; 
+            const currentScrollY = window.scrollY; // 상태 표시용
             const vvWidth = visualViewport.width;
-
-            const viewportTopGap = parseInt(vvPageTop - vvOffsetTop);
-            const scrollY = window.scrollY;
 
             // ----------------------------------------------------------------------------------
             // 1. Fixed Bottom UI 보정 (#fixed-container) 로직
             // ----------------------------------------------------------------------------------
-            
-            let transformY = vvOffsetTop;
+            // LV 스크롤 상쇄(-currentScrollY)를 제거하고, VV 앵커링만을 사용합니다.
+            let transformY = 0; 
 
+            // VV 앵커링 보정: Fixed UI를 LV 기준으로 VV 하단에 붙입니다.
             if (keyboardHeight > 0) {
-                transformY -= keyboardHeight; 
+                // 키보드 있을 때: 키보드 높이만큼 위로 밀어 올려 VV 하단에 앵커링
+                transformY += -keyboardHeight;
+            } else {
+                // 키보드 없을 때 (툴바 이동 보정): 툴바 접힘으로 VV가 위로 이동한 것을 상쇄하기 위해
+                // Fixed UI를 아래로 움직여야 함.
+                transformY += offsetTop; // ✅ 올바른 부호: 양수
             }
-
-            fixedContainer.style.transform = `translateY(${transformY}px)`;
-        
+            
+            requestAnimationFrame(() => {
+                 fixedContainer.style.transform = `translateY(${transformY}px)`;
+            });
+            
             // ----------------------------------------------------------------------------------
             // 2. Visual Viewport 경계 마커 및 상태 업데이트
             // ----------------------------------------------------------------------------------
             
             // Fixed Top UI (#status) 보정: 상단 UI는 offsetTop만큼 내려줘야 VV 상단에 앵커링됩니다.
-            statusDisplay.style.transform = `translateY(${vvOffsetTop}px)`;
+            statusDisplay.style.transform = `translateY(${offsetTop}px)`;
             
             // VV 하단 경계 마커 (#vv-bottom-marker) 업데이트 (파란색 선)
-            const vvBottomPosition = visualViewport.height + vvOffsetTop;
+            const vvBottomPosition = visualViewport.height + offsetTop;
             vvBottomMarker.style.top = `${vvBottomPosition}px`;
             vvBottomMarker.style.transform = `translateY(-100%)`; 
             vvBottomMarker.style.width = `${vvWidth}px`; 
@@ -237,10 +261,10 @@
 
             // 3. 상태 표시 업데이트
             statusDisplay.innerText = 
+                `LV Scroll (KBD Bugged): ${currentScrollY.toFixed(0)}px | ` + 
                 `VV Height: ${visualViewport.height.toFixed(0)}px | ` + 
-                `KBD Height: ${keyboardHeight}px | ` +
-                `VV OffsetTop: ${vvOffsetTop.toFixed(0)}px | ` +
-                `Final Transform: translateY(${transformY.toFixed(0)}px)`;
+                `VV OffsetTop: ${offsetTop.toFixed(0)}px | ` +
+                `Final Transform: translateY(${transformY.toFixed(0)}px) (VV Anchor)`;
 
 
             if (modalContainer.classList.contains('is-open')) {
