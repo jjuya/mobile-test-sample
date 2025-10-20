@@ -213,6 +213,8 @@
          * Visual Viewport의 변화에 따라 Fixed UI의 위치를 보정합니다. (LV 스크롤 상쇄 로직 제거)
          */
         const updateFixedUI = () => {
+            console.log('updateFixedUI');
+
             if (!visualViewport) {
                 updateLayoutViewportMarker();
                 statusDisplay.innerText = "Visual Viewport API 미지원. 고정 UI 보정 기능 비활성화.";
@@ -322,7 +324,7 @@
         window.addEventListener('load', () => {
             updateFixedUI();
             updateLayoutViewportMarker();
-            setInterval(updateFixedUI, 200);
+            // setInterval(updateFixedUI, 200);
         });
 
         if (visualViewport) {
