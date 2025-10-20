@@ -316,6 +316,26 @@
             requestAnimationFrame(checkAndScroll);
         }
 
+        const smoothScrollToInput = (inputEl) => {
+            const vvHeight = visualViewport.height;
+            const fixedHeight = fixedContainer.offsetHeight; 
+            const inputTopVisual = inputEl.getBoundingClientRect().top;
+            const inputHeight = inputEl.offsetHeight;
+            
+            // 유효 영역의 중앙에 input 중앙이 오도록 offset 계산
+            const effectiveHeight = vvHeight - fixedHeight;         // Fixed 요소를 제외한 유효 높이
+            const offsetFixed = (effectiveHeight -inputHeight) / 2; // input 상단의 목표 위치 (유효 영역의 중앙 - input 높이 절반)
+            const deltaY = inputTopVisual - offsetFixed;            // 스크롤 이동 거리 계산
+            
+            // 최소 이동 거리(예: 5px)를 두어 불필요한 스크롤 방지
+            if (Math.abs(deltaY) > 5) {
+                window.scrollBy({
+                    top: deltaY,
+                    behavior: 'smooth'
+                });
+            }
+        }
+
         const openModal = () => {
             modalContainer.classList.add('is-open');
             document.body.style.overflow = 'hidden';
