@@ -245,9 +245,9 @@
                 const vvWidth = visualViewport.width;
 
                 // ----------------------------------------------------------------------------------
-                // 1. Fixed Bottom UI 보정 (#fixed-container) 로직 (기존 수정 로직 유지)
+                // 1. Fixed Bottom UI 보정 (#fixed-container) 로직
                 // ----------------------------------------------------------------------------------
-                const totalCorrection = offsetTop + keyboardHeight;
+                const totalCorrection = offsetTop - keyboardHeight;
                 fixedContainer.style.transform = `translateY(${-totalCorrection}px)`; // 위로 이동 (음수)
 
                 // ----------------------------------------------------------------------------------
