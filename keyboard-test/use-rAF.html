@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+    <title>Fixed UI 최종 테스트 (VV 앵커링 전용)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        html { font-family: 'Inter', sans-serif; }
+        body {
+            height: 100vh;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            padding-bottom: 12rem;
+            margin: 0; 
+            background-color: #f5f5f5;
+        }
+
+        /* Fixed UI 컨테이너 (JS로 transform 보정 대상) */
+        #fixed-container {
+            position: fixed; 
+            bottom: 0;
+            left: 0;
+            right: 0;
+            transition: none; 
+            z-index: 50;
+            will-change: transform;
+        }
+
+        /* 키보드 유무 상태 메시지 - 상단 고정 유지 (JS로 위치 보정 대상) */
+        #status {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 60;
+            font-size: 0.875rem;
+            transition: none; 
+            will-change: transform;
+            background-color: rgb(79 70 229 / var(--tw-bg-opacity)); 
+            color: white;
+            padding: 0.5rem;
+            text-align: center;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+
+        /* Layout Viewport 경계 시각화 마커 (빨간색 점선) */
+        #layout-viewport-marker {
+            position: absolute; 
+            top: 0;
+            left: 0;
+            width: 100%;
+            border: 3px dashed rgba(255, 0, 0, 0.8);
+            box-sizing: border-box;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        /* Visual Viewport 하단 경계 마커 (파란색 실선) */
+        #vv-bottom-marker {
+            position: fixed;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background-color: rgba(0, 191, 255, 0.9);
+            z-index: 999;
+            pointer-events: none;
+            will-change: top;
+        }
+
+        /* 중앙 고정 UI 스타일 */
+        #fixed-center-ui {
+            position: fixed;
+            top: 50%;
+            right: 16px;
+            background-color: #333;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px; /* pill shape */
+            font-weight: bold;
+            z-index: 70; 
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            white-space: nowrap;
+        }
+
+
+        /* 모달 스타일 유지 */
+        #modal-container {
+            position: fixed; 
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none; 
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        #modal-container.is-open { display: flex; }
+        #modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            max-height: 90%; 
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    
+    <div id="layout-viewport-marker"></div>
+    
+    <div id="vv-bottom-marker"></div> 
+
+    <div id="status" class="bg-indigo-500 text-white p-2 text-center shadow-lg">
+        Visual Viewport 상태 모니터링 중...
+    </div>
+    
+    <div id="fixed-center-ui">fixed : Center</div>
+
+    
+    <main class="container mx-auto px-4 py-12 flex-grow">
+        <h1 class="text-3xl font-bold mb-4 text-gray-800">스크롤 가능한 콘텐츠 영역</h1>
+        
+        <div class="bg-red-100 p-2 border border-red-400 rounded-lg text-sm mb-4">
+            🔴 빨간색 점선: Layout Viewport (LV)의 경계입니다.
+            <br>
+            🔵 파란색 선 & 상단바: Visual Viewport (VV)의 경계입니다.
+        </div>
+
+        <button id="open-modal-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg shadow-xl mb-6">
+            모달 열고 입력창 테스트
+        </button>
+
+        <div class="space-y-4">
+            <div class="h-96 bg-gray-50 flex items-center justify-center rounded-xl shadow-inner">
+                <p class="text-gray-500">긴 스크롤을 위한 더미 공간 (1)</p>
+            </div>
+            
+            <div class="h-96 bg-gray-50 flex items-center justify-center rounded-xl shadow-inner">
+                <p class="text-gray-500">긴 스크롤을 위한 더미 공간 (2)</p>
+            </div>
+            
+            <div class="p-4 bg-yellow-100 rounded-xl">
+                <label for="last_input" class="block mb-2 font-medium text-gray-700">마지막 입력 필드 (화면 하단 근접)</label>
+                <input type="text" id="last_input" placeholder="여기에 입력 시 키보드에 가려질 위험이 큽니다." class="w-full p-3 border-2 border-yellow-400 rounded-lg focus:outline-none focus:ring-4 focus:ring-yellow-300">
+            </div>
+
+            <div class="h-32"></div> </div>
+    </main>
+
+    <div id="fixed-container" class="bg-white border-t-4 border-indigo-500 shadow-2xl p-4">
+        <div class="fixed-ui-element flex justify-between items-center mb-3">
+            <h3 class="text-xl font-bold text-indigo-700">Fixed Bottom UI</h3>
+            <button class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-150">
+                전송
+            </button>
+        </div>
+        
+        <input type="text" id="input-field" placeholder="Fixed UI 내 입력 (키보드 테스트용)" class="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+    </div>
+
+    <div id="modal-container" onclick="if(event.target.id === 'modal-container') closeModal();">
+        <div id="modal-content">
+            <h2 class="text-2xl font-bold mb-4 text-indigo-700">모달 내 입력 테스트</h2>
+            <p class="mb-4 text-gray-600">이 모달은 키보드 활성화 시 Visual Viewport의 크기에 맞춰 높이가 조정됩니다.</p>
+            
+            <label for="modal-input" class="block mb-2 font-medium text-gray-700">모달 입력 필드 1</label>
+            <input type="text" id="modal-input" placeholder="모달 내 입력 (키보드 보정 대상)" class="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-4">
+            
+            <label for="modal-input-2" class="block mb-2 font-medium text-gray-700">모달 입력 필드 2</label>
+            <input type="text" id="modal-input-2" placeholder="모달 내 입력 2 (스크롤 유도)" class="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-20">
+            
+            <button onclick="closeModal()" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg">
+                닫기
+            </button>
+        </div>
+    </div>
+    <script>
+        const visualViewport = window.visualViewport;
+
+        const fixedContainer = document.getElementById('fixed-container');
+        const statusDisplay = document.getElementById('status');
+        const allInputs = document.querySelectorAll('input[type="text"]');
+        const safetyMargin = 15;
+        
+        const layoutViewportMarker = document.getElementById('layout-viewport-marker');
+        const vvBottomMarker = document.getElementById('vv-bottom-marker');
+
+        const modalContainer = document.getElementById('modal-container');
+        const openModalBtn = document.getElementById('open-modal-btn');
+        let activeInput = null;
+
+        const getKeyboardHeight = () => {
+            if (!visualViewport) return 0;
+            const keyboardHeight = window.innerHeight - visualViewport.height;
+            return Math.max(0, Math.floor(keyboardHeight));
+        }
+
+        const updateLayoutViewportMarker = () => {
+            layoutViewportMarker.style.height = `${window.innerHeight}px`;
+            layoutViewportMarker.style.transform = `translateY(${window.scrollY}px)`;
+        };
+
+
+        /**
+         * @function updateFixedUI
+         * Visual Viewport의 변화에 따라 Fixed UI의 위치를 보정합니다. (rAF Throttling 적용)
+         */
+        const updateFixedUI = () => {
+            console.log('start updateFixedUI : use rAF');
+
+            // 이미 다음 프레임에 업데이트가 예약되어 있다면 중복 실행 방지
+            if (isUpdating) {
+                return;
+            }
+
+            isUpdating = true; // 업데이트 예약 플래그 설정
+    
+            // 다음 애니메이션 프레임(약 16.7ms 후)에 실제 로직 실행을 요청
+            requestAnimationFrame(() => {
+                // 실제 로직 실행 시작
+                
+                console.log('rAF callBack');
+
+                if (!visualViewport) {
+                    updateLayoutViewportMarker();
+                    statusDisplay.innerText = "Visual Viewport API 미지원. 고정 UI 보정 기능 비활성화.";
+                    isUpdating = false;
+                    return;
+                }
+
+                const keyboardHeight = getKeyboardHeight();
+                const offsetTop = visualViewport.offsetTop; 
+                const currentScrollY = window.scrollY; 
+                const vvWidth = visualViewport.width;
+
+                // ----------------------------------------------------------------------------------
+                // 1. Fixed Bottom UI 보정 (#fixed-container) 로직 (기존 수정 로직 유지)
+                // ----------------------------------------------------------------------------------
+                const totalCorrection = offsetTop + keyboardHeight;
+                fixedContainer.style.transform = `translateY(${-totalCorrection}px)`; // 위로 이동 (음수)
+
+                // ----------------------------------------------------------------------------------
+                // 2. Visual Viewport 경계 마커 및 상태 업데이트
+                // ----------------------------------------------------------------------------------
+                
+                statusDisplay.style.transform = `translateY(${offsetTop}px)`;
+                
+                const vvBottomPosition = visualViewport.height + offsetTop;
+                vvBottomMarker.style.top = `${vvBottomPosition}px`;
+                vvBottomMarker.style.transform = `translateY(-100%)`; 
+                vvBottomMarker.style.width = `${vvWidth}px`; 
+
+                updateLayoutViewportMarker();
+
+                // 3. 상태 표시 업데이트
+                statusDisplay.innerText = 
+                    `LV Scroll: ${currentScrollY.toFixed(0)}px | ` + 
+                    `VV Height: ${visualViewport.height.toFixed(0)}px | ` + 
+                    `VV OffsetTop: ${offsetTop.toFixed(0)}px | ` +
+                    `Keyboard Height: ${keyboardHeight.toFixed(0)}px | ` +
+                    `Final Transform: translateY(${-totalCorrection.toFixed(0)}px)`;
+
+
+                if (modalContainer.classList.contains('is-open')) {
+                    updateModalPosition();
+                }
+
+                isUpdating = false; // 업데이트 완료 후 플래그 해제
+            });
+        };
+
+
+        const updateModalPosition = () => {
+            if (!visualViewport || !modalContainer.classList.contains('is-open')) return;
+            
+            modalContainer.style.height = `${visualViewport.height}px`;
+            modalContainer.style.top = `${visualViewport.offsetTop}px`;
+
+            if (activeInput) {
+                smoothScrollToInput(activeInput);
+            }
+        }
+
+        /**
+         * @function waitForKeyboardAndScroll
+         * rAF를 사용하여 키보드가 올라올 때까지 Polling하고, 키보드가 감지되면 스크롤을 실행합니다.
+         */
+        const waitForKeyboardAndScroll = (inputEl) => {
+            // 키보드 상태를 체크하고 스크롤을 시도하는 내부 함수
+            const checkAndScroll = () => {
+                // getKeyboardHeight() 함수가 0보다 큰 값 (키보드 높이)을 반환하는지 확인
+                const isKeyboardUp = getKeyboardHeight() > 0;
+
+                if (isKeyboardUp) {
+                    // 키보드가 올라왔다면, 즉시 smoothScrollToInput 실행 후 rAF 루프를 종료합니다.
+                    smoothScrollToInput(inputEl);
+                } else {
+                    // 아직 키보드가 올라오지 않았다면, 다음 애니메이션 프레임에서 다시 시도
+                    // 이를 통해 100ms의 고정된 지연 없이, 키보드가 올라오는 즉시 반응
+                    requestAnimationFrame(checkAndScroll);
+                }
+            };
+
+            // 폴링 시작
+            requestAnimationFrame(checkAndScroll);
+        }
+
+        const openModal = () => {
+            modalContainer.classList.add('is-open');
+            document.body.style.overflow = 'hidden';
+            updateModalPosition();
+        }
+
+        const closeModal = () => {
+            modalContainer.classList.remove('is-open');
+            document.body.style.overflow = '';
+            if (visualViewport && visualViewport.offsetTop !== 0) {
+                window.scrollBy({ top: -visualViewport.offsetTop });
+            }
+        }
+
+
+        // ------------------------------------------------------------------
+        // 초기화 및 이벤트 리스너
+        // ------------------------------------------------------------------
+
+        window.addEventListener('load', () => {
+            updateFixedUI();
+            updateLayoutViewportMarker();
+        });
+
+        if (visualViewport) {
+            visualViewport.addEventListener('resize', updateFixedUI);
+            visualViewport.addEventListener('scroll', updateFixedUI);
+            window.addEventListener('scroll', updateFixedUI, { passive: true });
+            window.addEventListener('resize', updateFixedUI);
+        } else {
+            window.addEventListener('scroll', updateFixedUI, { passive: true });
+            window.addEventListener('resize', updateFixedUI);
+        }
+        
+        allInputs.forEach(input => {
+            input.addEventListener('focus', (e) => {
+                activeInput = e.target;
+                
+                const isInFixedContainer = fixedContainer.contains(e.target); // Fixed UI 내 입력 필드는 스크롤 보정 대상에서 제외
+                
+                if (!modalContainer.classList.contains('is-open') && !isInFixedContainer && visualViewport ) {
+                    // rAF 기반 폴링 함수 호출
+                    waitForKeyboardAndScroll(e.target);
+                } 
+            });
+
+            input.addEventListener('blur', () => {
+                activeInput = null;
+            });
+        });
+
+        openModalBtn.addEventListener('click', openModal);
+
+    </script>
+</body>
+</html>
