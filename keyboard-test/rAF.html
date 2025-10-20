@@ -196,6 +196,8 @@
 
         const modalContainer = document.getElementById('modal-container');
         const openModalBtn = document.getElementById('open-modal-btn');
+
+        let isUpdating = false;
         let activeInput = null;
 
         const getKeyboardHeight = () => {
