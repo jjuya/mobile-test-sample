@@ -248,7 +248,7 @@
                 // 1. Fixed Bottom UI 보정 (#fixed-container) 로직
                 // ----------------------------------------------------------------------------------
                 const totalCorrection = offsetTop - keyboardHeight;
-                fixedContainer.style.transform = `translateY(${-totalCorrection}px)`; // 위로 이동 (음수)
+                fixedContainer.style.transform = `translateY(${totalCorrection}px)`;
 
                 // ----------------------------------------------------------------------------------
                 // 2. Visual Viewport 경계 마커 및 상태 업데이트
