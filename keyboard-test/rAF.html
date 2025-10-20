@@ -230,7 +230,7 @@
             requestAnimationFrame(() => {
                 // 실제 로직 실행 시작
                 
-                console.log('rAF callBack');
+                console.log('start rAF callBack');
 
                 if (!visualViewport) {
                     updateLayoutViewportMarker();
@@ -304,7 +304,9 @@
 
                 if (isKeyboardUp) {
                     // 키보드가 올라왔다면, 즉시 smoothScrollToInput 실행 후 rAF 루프를 종료합니다.
-                    smoothScrollToInput(inputEl);
+                    requestAnimationFrame(() => { 
+                        smoothScrollToInput(inputEl);
+                    });
                 } else {
                     // 아직 키보드가 올라오지 않았다면, 다음 애니메이션 프레임에서 다시 시도
                     // 이를 통해 100ms의 고정된 지연 없이, 키보드가 올라오는 즉시 반응
