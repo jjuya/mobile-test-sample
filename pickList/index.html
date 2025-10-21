@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV 파일 업로드 테스트</title>
+</head>
+<body>
+    <h1>CSV 파일 업로드 테스트</h1>
+    
+    <label for="csv-file-input">CSV 파일 선택:</label><br>
+    <input type="file" id="csv-file-input" accept=".csv, text/csv">
+    
+    <p style="margin-top: 20px;">
+        파일을 선택한 후, JavaScript 코드를 추가하여 파일 객체를 확인하거나<br>
+        실제 서버에 전송하는 테스트를 진행하시면 됩니다.
+    </p>
+
+    <script>
+        document.getElementById('csv-file-input').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                alert('선택된 파일: ' + file.name + '\n유형: ' + file.type);
+            }
+        });
+    </script>
+</body>
+</html>
