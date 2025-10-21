@@ -276,6 +276,8 @@
 
                 // 3. 상태 표시 업데이트
                 statusDisplay.innerText = 
+                    `Document Height: ${document.documentElement.scrollHeight.toFixed(0)}px | ` +
+                    `LV Height: ${window.innerHeight.toFixed(0)}px | ` + 
                     `LV Scroll: ${currentScrollY.toFixed(0)}px | ` + 
                     `VV Height: ${visualViewport.height.toFixed(0)}px | ` + 
                     `VV OffsetTop: ${offsetTop.toFixed(0)}px | ` + 
