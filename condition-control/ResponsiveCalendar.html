@@ -137,6 +137,12 @@
             padding: 0;
         }
 
+        .selectedRangeDisplay {
+            padding: 16px 12px 0px;
+            font-weight: 700;
+            color: rgb(31 41 55 / var(--tw-text-opacity, 1));
+        }
+
         /* ----------------------------------------------------- */
         /* Month/Year 선택 그리드 스타일 (Simplified View) */
         /* ----------------------------------------------------- */
@@ -518,8 +524,16 @@
 
         <div class="mobile-popup-overlay" id="calendarPopupOverlay">
             <div class="mobile-popup-content">
-                <div id="calendarPopup" class="flex-grow overflow-y-auto">
-                    </div>
+                <div id="selectedRangeDisplay"  class="selectedRangeDisplay flex items-center hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5 mr-2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5M21 11.25v7.5M3 15h18" />
+                    </svg>
+            
+                    <span id="selectedRangeText" class="selectedRangeText"></span>
+                </div>
+
+                <div id="calendarPopup" class="flex-grow overflow-y-auto"></div>
+                
                 <div class="action-buttons">
                     <button id="confirmButton" class="action-button confirm">확인</button>
                 </div>
@@ -535,6 +549,8 @@
             const calendarInput = document.getElementById('calendarInput');
             const calendarPopupOverlay = document.getElementById('calendarPopupOverlay');
             const calendarPopup = document.getElementById('calendarPopup');
+            const selectedRangeDisplay = document.getElementById('selectedRangeDisplay');
+            const selectedRangeText = document.getElementById('selectedRangeText');
             const clearButton = document.getElementById('clearButton');
             const confirmButton = document.getElementById('confirmButton');
             const mobileButton = document.getElementById('mobileViewButton');
@@ -549,7 +565,27 @@
             let currentFrameView = 'mobile'; // 현재 디바이스 뷰 ('mobile' or 'tablet')
             
             // --- 2. 유틸리티 함수 ---
-            
+            // tempSelectedDates를 기반으로 기간 문자열을 반환
+            const getFormattedTempRange = () => {
+                if (tempSelectedDates.length === 0) return '';
+
+                const type = calendarTypeSelect.value;
+                const sortedDates = [...tempSelectedDates].sort((a, b) => a.getTime() - b.getTime());
+                const start = sortedDates[0];
+                const end = sortedDates.length > 1 ? sortedDates[sortedDates.length - 1] : start;
+
+                if (type.startsWith('day')) {
+                    return `${formatDate(start)} ~ ${formatDate(end)}`;
+                } else if (type.startsWith('week')) {
+                    return formatWeekRange(start, end);
+                } else if (type.startsWith('month')) {
+                    return formatMonthRange(start, end);
+                } else if (type.startsWith('year')) {
+                    return formatYearRange(start, end);
+                }
+                return '';
+            };
+
             // 오늘 날짜 가져오기 (시간 초기화)
             const getTodayDate = () => {
                 const today = new Date();
@@ -580,21 +616,52 @@
             };
 
             // 주차 범위 포맷 함수
-            const formatWeekRange = (startWeekDate, endWeekDate) => {
-                // 선택된 날짜가 속한 실제 주차의 시작일과 종료일을 계산하여 포맷
-                const start = getISOWeekRange(startWeekDate).start;
-                const end = getISOWeekRange(endWeekDate).end;
-                return `${formatDate(start)} ~ ${formatDate(end)}`;
+            const formatWeekRange = (startDate, endDate) => {
+                // getISOWeekRange를 사용하여 주차 번호를 계산합니다.
+                const getWWFromDate = (date) => {
+                    // 1. 기존 getISOWeekRange를 사용하여 주의 시작일(월요일)을 가져옵니다.
+                    const weekStart = getISOWeekRange(date).start;
+
+                    // 2. 해당 연도의 1월 1일을 가져옵니다.
+                    const yearStart = new Date(weekStart.getFullYear(), 0, 1);
+
+                    // 3. 1월 1일과 주의 시작일(월요일) 사이의 총 일수를 계산합니다.
+                    const diffDays = Math.floor((weekStart.getTime() - yearStart.getTime()) / (24 * 60 * 60 * 1000));
+
+                    // 4. 총 일수를 7로 나누고 올림하여 주차 번호를 반환합니다.
+                    // (이 로직은 'ISO 8601 목요일 조정'이 없는, 기존 로직 기반의 주차 번호입니다.)
+                    return Math.ceil((diffDays + 1) / 7);
+                };
+
+                const startWeek = getWWFromDate(startDate);
+                const endWeek = getWWFromDate(endDate);
+                
+                const startYear = startDate.getFullYear();
+                const endYear = endDate.getFullYear();
+                
+                // YYYY.WW 형식 (주차는 2자리로 패딩)
+                const formatWeek = (year, week) => {
+                    return `${year}.${String(week).padStart(2, '0')}`;
+                };
+
+                const startFormatted = formatWeek(startYear, startWeek);
+                const endFormatted = formatWeek(endYear, endWeek);
+                
+                return `${startFormatted} ~ ${endFormatted}`;
             };
 
             // 월 기간 포맷 함수
             const formatMonthRange = (startDate, endDate) => {
-                const startMonth = String(startDate.getMonth() + 1).padStart(2, '0');
-                const endMonth = String(endDate.getMonth() + 1).padStart(2, '0');
-                if (startDate.getFullYear() === endDate.getFullYear()) {
-                    return `${startDate.getFullYear()}.${startMonth} ~ ${endMonth}`;
-                }
-                return `${startDate.getFullYear()}.${startMonth} ~ ${endDate.getFullYear()}.${endMonth}`;
+                const formatMonth = (date) => {
+                    const year = date.getFullYear();
+                    const month = date.getMonth() + 1; // 0-based month
+                    return `${year}-${String(month).padStart(2, '0')}`;
+                };
+                
+                const startFormatted = formatMonth(startDate);
+                const endFormatted = formatMonth(endDate);
+
+                return `${startFormatted} ~ ${endFormatted}`;
             };
             
             // 연도 기간 포맷 함수
@@ -753,6 +820,7 @@
                 calendarInput.classList.add('active');
                 calendarPopupOverlay.classList.add('show');
                 renderCalendar(); // 달력 렌더링
+                updateRangeDisplay(); // 기간 표시
             };
 
             // 팝업 닫기 (취소)
@@ -865,6 +933,27 @@
 
 
             // --- 5. 렌더링 함수 ---
+            // [새로 추가된 함수] 팝업 상단의 기간 표시 영역 업데이트
+            const updateRangeDisplay = () => {
+                const type = calendarTypeSelect.value;
+                const isFromToType = type.endsWith('FromTo');
+                
+                // DayFromTo, WeekFromTo, MonthFromTo, YearFromTo 타입인 경우에만 표시
+                if (isFromToType) {
+                    const rangeText = getFormattedTempRange();
+                    
+                    selectedRangeDisplay.classList.remove('hidden');
+
+                    if (rangeText) {
+                        selectedRangeText.textContent = rangeText; // [수정] 텍스트 요소를 대상으로 설정
+                    } else {
+                        selectedRangeText.textContent = '기간을 선택하세요'; // [수정] 텍스트 요소를 대상으로 설정
+                    }
+                } else {
+                    // FromTo 타입이 아니면 숨김
+                    selectedRangeDisplay.classList.add('hidden');
+                }
+            };
 
             // 월 선택 그리드 렌더링 (Month/MonthFromTo)
             const renderMonthView = (targetDate, container, isRightCalendar = false) => {
@@ -883,7 +972,7 @@
                         </div>`;
                 
                 // 3x4 그리드
-                html += `<div class="grid grid-cols-3 gap-y-1 gap-x-0 p-4">`;
+                html += `<div class="grid grid-cols-3 gap-y-1 gap-x-0 pb-4">`;
 
                 for (let i = 0; i < 12; i++) {
                     const monthDate = new Date(year, i, 1);
@@ -938,7 +1027,7 @@
                         </div>`;
                 
                 // 3x4 그리드
-                html += `<div class="grid grid-cols-3 gap-y-1 gap-x-0 p-4">`;
+                html += `<div class="grid grid-cols-3 gap-y-1 gap-x-0 pb-4">`;
 
                 for (let y = startYear; y <= endYear; y++) {
                     const yearDate = new Date(y, 0, 1);
@@ -1165,6 +1254,7 @@
                 }
                 
                 renderCalendar();
+                updateRangeDisplay();
             };
 
 
@@ -1334,6 +1424,7 @@
                 
                 if (selectionMade) {
                     renderCalendar(); // 선택 상태가 변경되면 달력 재렌더링
+                    updateRangeDisplay(); // 선택 변경 시 기간 표시 업데이트
                 }
             });
 
