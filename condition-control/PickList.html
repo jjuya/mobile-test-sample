@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PickList (뷰 전환 지원)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* ----------------------------------------------------- */
+        /* 기본 레이아웃 및 뷰 전환 스타일 */
+        /* ----------------------------------------------------- */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #5c6470;
+            display: flex;
+            flex-direction: column; /* 버튼과 프레임을 세로로 배치 */
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 2rem 1rem; /* 상하 패딩 증가 */
+        }
+
+        .view-controls {
+            margin-bottom: 1.5rem;
+            display: flex;
+            gap: 1rem;
+        }
+
+        .phone-frame {
+            position: relative;
+            width: 375px; /* 모바일 뷰 기본 너비 */
+            height: 667px;
+            background-color: #fff;
+            border-radius: 8px;
+            border: 1px solid #5c6470;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease-in-out; /* 너비/높이 전환 애니메이션 */
+        }
+
+        .tablet-view .phone-frame {
+            width: 1180px; /* 태블릿 뷰 너비로 확장 */
+            height: 768px; 
+        }
+
+        .phone-content {
+            padding: 1.5rem;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+        }
+        
+        /* ----------------------------------------------------- */
+        /* 팝업 공통 스타일 (하단 슬라이드 업) */
+        /* ----------------------------------------------------- */
+        .mobile-popup-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: flex-end; /* 하단에 배치 */
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease-in-out;
+            z-index: 1000;
+        }
+
+        .mobile-popup-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .dropdown-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px; /* 모바일 뷰에서의 최대 너비 (기본값) */
+            background-color: #fff;
+            border-top-left-radius: 1rem;
+            border-top-right-radius: 1rem;
+            box-shadow: 0 -10px 20px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            transform: translateY(100%); /* 하단 숨김 */
+            transition: transform 0.3s ease-in-out;
+            
+            display: flex; 
+            flex-direction: column; /* 내용물을 세로로 배치 */
+            height: auto; /* 내용물 높이만큼만 차지 */
+            max-height: 80vh; /* 너무 커지는 것 방지 */
+        }
+
+        .mobile-popup-overlay.show .dropdown-container {
+            transform: translateY(0); /* 슬라이드 업 */
+        }
+
+        /* ----------------------------------------------------- */
+        /* [모바일 뷰] */
+        /* ----------------------------------------------------- */
+        .popup-main {
+            display: block; 
+            flex-grow: 1; 
+            padding: 1rem;
+            overflow-y: auto; 
+        }
+        
+        .list-all {
+            width: 100%; 
+            display: block; 
+        }
+
+        .list-selected {
+            display: none; 
+        }
+        
+        .option-list {
+            max-height: 300px; 
+            overflow-y: auto; 
+            padding: 0.5rem 0; 
+        }
+
+        /* ----------------------------------------------------- */
+        /* [태블릿 뷰] */
+        /* ----------------------------------------------------- */
+        .tablet-view .dropdown-container {
+            /* 고정 크기 및 중앙 배치 효과 */
+            max-width: 300px; /* 팝업 너비 고정 */
+            height: 300px; /* 팝업 높이 고정 */
+            max-height: 300px; 
+            border-radius: 0.5rem; /* 모서리 둥글게 */
+        }
+
+        .tablet-view .mobile-popup-overlay {
+            align-items: center; /* 팝업을 중앙에 배치 */
+        }
+        
+        .tablet-view .popup-main {
+            display: block; 
+            flex-grow: 1; 
+            overflow: hidden; 
+            min-height: 0; 
+        }
+
+        .tablet-view .file-content-textarea {
+            min-height: 0;
+        }
+
+        /* ----------------------------------------------------- */
+        /* 공통 컴포넌트 스타일 */
+        /* ----------------------------------------------------- */        
+        .line-count { 
+            padding: 12px 16px 0px;
+            color: #4b5563; 
+            font-weight: 600; 
+            text-align: center;
+        }
+        
+        .file-content-textarea {
+            width: 100%;
+            height: 100%; /* 부모 높이 채우기 */
+            min-height: 200px;
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            resize: none;
+            font-family: monospace; /* 텍스트 파일 내용 출력에 적합 */
+        }
+
+        .action-buttons { display: flex; border-top: 1px solid #e5e7eb; padding: 12px 16px; gap: 0.5rem; flex-shrink: 0; }
+        .action-button { flex-grow: 1; flex-basis: 0; padding: 10px 12px; border-radius: 8px; transition: background-color 0.2s; cursor: pointer; text-align: center;}
+        .action-button.confirm { background-color: #3b82f6; color: #fff; }
+        .action-button.confirm:hover { background-color: #2563eb; }
+        .action-button.file-select { background-color: #5c6470; color: #fff; }
+        .action-button.file-select:hover { background-color: #4b5563; }
+    </style>
+</head>
+<body id="appBody" class="mobile-view"> 
+
+    <div class="view-controls">
+        <button id="mobileViewButton" class="px-4 py-2 rounded-md font-semibold text-white bg-blue-500 hover:bg-blue-600">
+            모바일 뷰 (375px)
+        </button>
+        <button id="tabletViewButton" class="px-4 py-2 rounded-md font-semibold text-gray-700 bg-gray-200 hover:bg-gray-300">
+            태블릿 뷰 (1180px)
+        </button>
+    </div>
+
+    <div class="phone-frame" id="phoneFrame">
+        <div class="phone-content">
+            <h1 class="text-xl font-bold text-center text-gray-800">모바일/태블릿 PickList</h1>
+            <p class="text-sm text-center text-gray-500 mt-2">아래 입력창을 터치하여 파일을 선택하거나 수동 입력하세요.</p>
+            <div class="relative w-full max-w-xs" id="triggerWrapper">
+                <input type="text" id="triggerInput" class="rounded-lg p-3 pr-10 text-lg text-gray-700 w-full cursor-pointer focus:outline-none border border-gray-300" placeholder="선택하세요" readonly>
+                <svg class="w-5 h-5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </div>
+            
+            <input type="file" id="fileInput" accept=".txt" style="display: none;">
+        </div>
+        
+        <div class="mobile-popup-overlay" id="popupOverlay">
+            <div class="dropdown-container">
+                <div class="line-count" id="lineCountTop">총 ( 0 )개</div>
+                
+                <div class="popup-main" id="popupMainContent">
+                    <textarea id="fileContentDisplay" class="file-content-textarea" placeholder="파일 내용이나 수동 입력할 텍스트를 여기에 입력하세요."></textarea>
+                </div>
+
+                <div class="action-buttons">
+                    <button id="selectFileButton" class="action-button file-select">파일 선택</button>
+                    <button id="confirmButton" class="action-button confirm">확인 (0개)</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const body = document.getElementById('appBody');
+        const phoneFrame = document.getElementById('phoneFrame');
+        const mobileViewButton = document.getElementById('mobileViewButton');
+        const tabletViewButton = document.getElementById('tabletViewButton');
+        const triggerInput = document.getElementById('triggerInput');
+        const popupOverlay = document.getElementById('popupOverlay');
+        const confirmButton = document.getElementById('confirmButton');
+        const fileInput = document.getElementById('fileInput');
+        const selectFileButton = document.getElementById('selectFileButton');
+        const fileContentDisplay = document.getElementById('fileContentDisplay');
+        const lineCountTop = document.getElementById('lineCountTop');
+
+        // 전역 상태 변수
+        let fileContentArray = [];
+        let selectedFileName = ''; // 파일 이름이 있으면 '파일' 모드, 없으면 '수동 입력' 모드
+
+        // -----------------------------------------------------
+        // 뷰 전환 로직 (이전과 동일)
+        // -----------------------------------------------------
+        mobileViewButton.addEventListener('click', () => {
+            body.classList.remove('tablet-view');
+            body.classList.add('mobile-view');
+            phoneFrame.classList.remove('tablet-view');
+            mobileViewButton.classList.remove('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
+            mobileViewButton.classList.add('bg-blue-500', 'text-white', 'hover:bg-blue-600');
+            tabletViewButton.classList.add('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
+            tabletViewButton.classList.remove('bg-blue-500', 'text-white', 'hover:bg-blue-600');
+        });
+
+        tabletViewButton.addEventListener('click', () => {
+            body.classList.remove('mobile-view');
+            body.classList.add('tablet-view');
+            phoneFrame.classList.add('tablet-view');
+            tabletViewButton.classList.remove('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
+            tabletViewButton.classList.add('bg-blue-500', 'text-white', 'hover:bg-blue-600');
+            mobileViewButton.classList.add('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
+            mobileViewButton.classList.remove('bg-blue-500', 'text-white', 'hover:bg-blue-600');
+        });
+
+        // -----------------------------------------------------
+        // 팝업 표시/숨김 로직
+        // -----------------------------------------------------
+        function showPopup() {
+            popupOverlay.classList.add('show');
+            
+            // 팝업 열 때 현재 textarea 내용을 기반으로 개수 업데이트 (누락 방지)
+            processTextContent(fileContentDisplay.value);
+        }
+
+        function hidePopup() {
+            popupOverlay.classList.remove('show');
+        }
+
+        // 오버레이 외부를 클릭하면 팝업 숨김 (태블릿 뷰에서는 중앙에 떠서 필요 없을 수 있으나, 모바일 하단 슬라이드업 방식이므로 추가)
+        popupOverlay.addEventListener('click', (event) => {
+            if (event.target === popupOverlay) {
+                hidePopup();
+            }
+        });
+
+        // 입력 필드를 클릭하면 팝업 표시
+        triggerInput.addEventListener('click', showPopup);
+
+        // -----------------------------------------------------
+        // 텍스트 내용 처리 (재사용 함수)
+        // -----------------------------------------------------
+        /**
+         * 텍스트 내용을 분할하고, 개수를 계산하여 UI를 업데이트합니다.
+         * @param {string} textContent - 처리할 텍스트 내용
+         * @param {boolean} updateTextarea - textarea 값도 이 내용으로 업데이트할지 여부
+         */
+        function processTextContent(textContent, updateTextarea = false) {
+            let count = 0;
+
+            if(textContent.length > 0) {
+                // 개행문자(\r?\n)로 분할
+                const lines = textContent.split(/\r?\n/);
+                fileContentArray = lines;
+                
+                count = fileContentArray.length;
+                
+                if (updateTextarea) {
+                    fileContentDisplay.value = textContent;
+                }
+            }
+
+            // 텍스트 박스 상단과 확인 버튼에 개수 출력
+            const countText = `총 ( ${count} ) 개`;
+            lineCountTop.textContent = countText;
+            confirmButton.textContent = `확인 (${count}개)`;
+
+            return count;
+        }
+
+        // -----------------------------------------------------
+        // 파일 처리 로직
+        // -----------------------------------------------------
+
+        // 파일 선택 버튼 클릭 시 숨겨진 file input 클릭 트리거
+        selectFileButton.addEventListener('click', () => {
+            // 4. 바인딩된 데이터 확인 및 안내 메시지 출력 (textarea 내용 기반)
+            const currentContent = fileContentDisplay.value.trim();
+            if (currentContent.length > 0) {
+                const isConfirmed = confirm('바인딩된 데이터가 존재합니다. 새로 데이터를 연결하시겠습니까?');
+                if (!isConfirmed) {
+                    return; // 취소하면 파일 탐색기를 열지 않음
+                }
+            }
+            fileInput.click();
+        });
+
+        // 파일이 선택되면 실행되는 핸들러
+        fileInput.addEventListener('change', handleFileSelection);
+
+        function handleFileSelection(event) {
+            const file = event.target.files[0];
+            
+            if (!file) {
+                return;
+            }
+            
+            const reader = new FileReader();
+
+            // 파일 읽기 완료 시
+            reader.onload = (e) => {
+                const textContent = e.target.result;
+                
+                // 파일 이름 저장
+                selectedFileName = file.name;
+                
+                // 1, 2. 파일 내용 출력 및 처리 로직
+                processTextContent(textContent, true); // true: textarea 업데이트
+
+                // 트리거 인풋 업데이트
+                triggerInput.value = `파일: ${selectedFileName}`;
+            };
+
+            // 에러 처리
+            reader.onerror = () => {
+                alert('파일을 읽는 도중 오류가 발생했습니다.');
+                resetState();
+            };
+
+            // 파일을 텍스트로 읽기
+            reader.readAsText(file);
+
+            // 파일 input 초기화 (같은 파일을 다시 선택해도 change 이벤트가 발생하도록)
+            fileInput.value = '';
+            
+            // 파일이 선택되었으므로 팝업 표시 (필요에 따라)
+            showPopup();
+        }
+        
+        // -----------------------------------------------------
+        // 텍스트 에디트 기능 추가 (가장 중요한 수정 사항)
+        // -----------------------------------------------------
+        fileContentDisplay.addEventListener('input', (event) => {
+            // 사용자가 텍스트를 입력할 때마다 내용 처리 및 개수 업데이트
+            const count = processTextContent(event.target.value);
+            
+            // 수동 편집 시 트리거 인풋에 반영
+            let baseName = selectedFileName || '수동 입력';
+            let status = (selectedFileName && count > 0) ? '(편집됨)' : '';
+        });
+        
+        // -----------------------------------------------------
+        // 확인 버튼 로직
+        // -----------------------------------------------------
+        confirmButton.addEventListener('click', () => {
+            // 최종적으로 현재 textarea의 내용을 처리하여 배열을 확정하고 UI 업데이트
+            const count = processTextContent(fileContentDisplay.value);
+            
+            console.log('최종 저장된 배열:', fileContentArray);
+            
+            // 트리거 인풋 업데이트
+            if (count > 0) {
+                let baseName = selectedFileName || '수동 입력';
+                triggerInput.value = `${baseName} (${count}개 선택)`;
+            } else {
+                // 내용이 모두 지워졌거나 빈 상태
+                resetState();
+            }
+            
+            hidePopup();
+        });
+
+        // -----------------------------------------------------
+        // 초기화 로직
+        // -----------------------------------------------------
+        function resetState() {
+            fileContentArray = [];
+            selectedFileName = '';
+            triggerInput.value = '선택하세요';
+            fileContentDisplay.value = '';
+            lineCountTop.textContent = '총 ( 0 )개';
+            confirmButton.textContent = '확인 (0개)';
+        }
+
+        // 초기 상태 설정
+        resetState(); 
+        
+    </script>
+</body>
+</html>
