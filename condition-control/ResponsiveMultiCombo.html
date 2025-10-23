@@ -215,6 +215,29 @@
         .action-button.reset:hover { background-color: #e5e7eb; }
         .action-button.confirm { background-color: #3b82f6; color: #fff; }
         .action-button.confirm:hover { background-color: #2563eb; }
+
+        .select-all {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            transition: background-color 0.2s, color 0.2s;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: space-between; /* 텍스트와 체크박스 분리 */
+            font-weight: 600;
+            color: #4b5563;
+            background-color: #f9fafb;
+            flex-shrink: 0;
+        }
+
+        .select-all:hover {
+            background-color: #f3f4f6;
+        }
+
+        .select-all.all-selected {
+            background-color: #e3f2fd; /* Light Blue Background */
+            color: #1e88e5; /* Primary Blue Text */
+        }
     </style>
 </head>
 <body id="appBody" class="mobile-view"> 
@@ -253,9 +276,12 @@
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                             </div>
                         </div>
-
-                        <div id="optionList" class="option-list">
+                        
+                        <div class="select-all" id="selectAllButton">
+                                <span id="selectAllText">전체 선택</span>
                             </div>
+
+                        <div id="optionList" class="option-list"></div>
                     </div>
                     
                     <div class="list-selected" id="listSelectedDiv">
@@ -301,6 +327,8 @@
             const selectedListPlaceholder = document.getElementById('selectedListPlaceholder'); 
             const searchInput = document.getElementById('searchInput');
             const clearButton = document.getElementById('clearButton');
+            const selectAllButton = document.getElementById('selectAllButton');
+            const selectAllCheckbox = document.getElementById('selectAllCheckbox');
             const resetButton = document.getElementById('resetButton');
             const confirmButton = document.getElementById('confirmButton');
             const mobileButton = document.getElementById('mobileViewButton'); 
@@ -420,6 +448,12 @@
 
                 updateUIOnSelectionChange();
             }
+
+            // 전체 선택 버튼 UI 상태 업데이트
+            function updateSelectAllUI() {
+                const isAllSelected = data.every(item => selectedItems.has(item.id));
+                selectAllButton.classList.toggle('all-selected', isAllSelected);
+            }
             
             // 선택 변경 시 UI를 업데이트하는 통합 함수
             function updateUIOnSelectionChange() {
@@ -437,6 +471,29 @@
                 }
 
                 updateConfirmButton();
+                updateSelectAllUI(); // 전체 선택 UI 상태도 업데이트
+            }
+            
+            // 전체 항목 선택/해제 토글 기능
+            function toggleAllItems() {
+                const isAllSelected = data.every(item => selectedItems.has(item.id));
+                
+                if (isAllSelected) {
+                    return;
+                } else {
+                    // 전체 선택
+                    data.forEach(item => {
+                        selectedItems.set(item.id, item);
+                    });
+                }
+                
+                // 검색된 항목 목록을 리렌더링 (체크박스 상태 반영)
+                const query = searchInput.value.toLowerCase();
+                const filteredData = data.filter(item => item.label.toLowerCase().includes(query));
+                renderOptions(filteredData);
+                
+                // 나머지 UI 업데이트
+                updateUIOnSelectionChange();
             }
 
             // 초기 뷰 설정
@@ -451,6 +508,8 @@
                 
                 searchInput.value = ''; // 검색창 초기화
                 renderOptions(data); // 전체 데이터로 목록 리렌더링
+
+                updateUIOnSelectionChange();
                 
                 if (isTabletView()) {
                     renderSelectedItems(); // 태블릿 뷰에서 선택된 항목 목록도 렌더링
@@ -503,6 +562,9 @@
                 renderOptions(data);
             });
 
+            // 전체 선택 버튼 이벤트 리스너 (추가)
+            selectAllButton.addEventListener('click', toggleAllItems);
+
             // 왼쪽 목록 항목 선택/해제 이벤트 리스너
             optionList.addEventListener('click', (event) => {
                 const itemDiv = event.target.closest('.option-item');
@@ -525,10 +587,13 @@
                 selectedItems.clear();
                 searchInput.value = '';
                 renderOptions(data);
+
                 if (isTabletView()) {
                     renderSelectedItems();
                 }
+
                 updateConfirmButton();
+                updateSelectAllUI();
             });
             
             // 확인 버튼: 선택 확정, 트리거 입력창 업데이트, 팝업 닫기
