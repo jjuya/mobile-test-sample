@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>멀티 선택 드롭다운 (트리 뷰 수정 완료)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* ----------------------------------------------------- */
+        /* 기본 레이아웃 및 뷰 전환 스타일 */
+        /* ----------------------------------------------------- */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #5c6470;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 2rem 1rem;
+        }
+
+        .view-controls {
+            margin-bottom: 1.5rem;
+            display: flex;
+            gap: 1rem;
+        }
+
+        .phone-frame {
+            position: relative;
+            width: 375px;
+            height: 667px;
+            background-color: #fff;
+            border-radius: 8px;
+            border: 1px solid #5c6470;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease-in-out;
+        }
+
+        .tablet-view .phone-frame {
+            width: 1180px;
+            height: 768px; 
+        }
+
+        .phone-content {
+            padding: 1.5rem;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+        }
+        
+        /* ----------------------------------------------------- */
+        /* 팝업 공통 스타일 */
+        /* ----------------------------------------------------- */
+        .mobile-popup-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: flex-end; 
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease-in-out;
+            z-index: 1000;
+        }
+
+        .mobile-popup-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .dropdown-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            background-color: #fff;
+            border-top-left-radius: 1rem;
+            border-top-right-radius: 1rem;
+            box-shadow: 0 -10px 20px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            transform: translateY(100%);
+            transition: transform 0.3s ease-in-out;
+            
+            display: flex; 
+            flex-direction: column;
+            height: auto;
+            max-height: 80vh;
+        }
+
+        .mobile-popup-overlay.show .dropdown-container {
+            transform: translateY(0);
+        }
+
+        .popup-main {
+            display: block; 
+            flex-grow: 0;
+        }
+        
+        .list-all {
+            width: 100%; 
+            display: block;
+        }
+
+        .list-selected {
+            display: none; 
+        }
+        
+        .option-list {
+            max-height: 300px;
+            overflow-y: auto; 
+            padding: 0.5rem 0; 
+        }
+
+        /* 태블릿 뷰 오버라이드 (팝업 중앙 배치) */
+        .tablet-view .mobile-popup-overlay {
+            align-items: center; 
+        }
+
+        .tablet-view .dropdown-container {
+            max-width: 400px; 
+            height: auto;
+            max-height: 80vh;
+            border-radius: 0.5rem; 
+        }
+        
+        /* ----------------------------------------------------- */
+        /* 공통 컴포넌트 스타일 (트리 뷰 핵심 수정 부분) */
+        /* ----------------------------------------------------- */
+        .search-input-wrapper { position: relative; padding: 12px 16px; border-bottom: 1px solid #e5e7eb; flex-shrink: 0; }
+        .search-input { width: 100%; padding: 8px 34px; background-color: #F3F3F7; border-radius: 8px; outline: none; }
+        .search-icon { position: absolute; left: 22px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #9ca3af; }
+        .clear-button { position: absolute; right: 20px; top: 50%; transform: translateY(-50%); width: 20px; height: 20px; color: #9ca3af; cursor: pointer; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: background-color 0.2s; }
+        
+        .option-item { display: flex; align-items: center; padding: 0.75rem 1rem; cursor: pointer; transition: background-color 0.2s; }
+        .option-item:hover { background-color: #f3f4f6; }
+        
+        /* 옵션 아이템 컨텐츠: Flex를 유지하여 내부 요소를 배치 */
+        .option-item-content { display: flex; align-items: center; flex-grow: 1; }
+        
+        /* 🌟 확장 버튼: 오른쪽으로 이동했으므로 마진 제거 */
+        .tree-toggle { 
+            width: 1.5rem; height: 1.5rem; 
+            display: flex; align-items: center; justify-content: center; 
+            color: #6b7280;
+            flex-shrink: 0;
+            transition: transform 0.2s;
+            cursor: pointer; 
+        }
+        .tree-toggle.expanded {
+            transform: rotate(90deg);
+        }
+        /* 🌟 자식이 없는 항목의 플레이스홀더: 오른쪽으로 이동했으므로 마진 제거 */
+        .no-children { 
+            width: 1.5rem; height: 1.5rem; 
+            flex-shrink: 0;
+        }
+
+        .checkbox-container { display: flex; align-items: center; justify-content: center; width: 1.25rem; height: 1.25rem; border: 1px solid #d1d5db; border-radius: 0.25rem; transition: background-color 0.2s; flex-shrink: 0; }
+        .checkbox-container.checked { background-color: #3b82f6; border-color: #3b82f6; }
+        .checkbox-container.indeterminate { background-color: #93c5fd; border-color: #3b82f6; } 
+        .checkbox-container svg { color: #fff; display: none; }
+        .checkbox-container.checked svg.full, .checkbox-container.indeterminate svg.partial { display: block; }
+        
+        /* 🌟 레이블: flex-grow: 1;로 나머지 공간을 차지하여 토글 버튼을 오른쪽으로 밉니다. */
+        .option-label { margin-left: 0.75rem; color: #374151; flex-grow: 1; }
+        
+        .tree-children { 
+            margin-left: 1rem; 
+            border-left: 1px solid #e5e7eb;
+            padding-left: 0.5rem;
+        }
+        .tree-children.hidden {
+            display: none;
+        }
+
+        .action-buttons { display: flex; border-top: 1px solid #e5e7eb; padding: 12px 16px; gap: 0.5rem; flex-shrink: 0; }
+        .action-button { flex-grow: 1; flex-basis: 0; padding: 10px 12px; border-radius: 8px; transition: background-color 0.2s; cursor: pointer; text-align: center;}
+        .action-button.reset { background-color: #f3f4f6; color: #4b5563; }
+        .action-button.confirm { background-color: #3b82f6; color: #fff; }
+
+        .select-all {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            transition: background-color 0.2s, color 0.2s;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-weight: 600;
+            color: #4b5563;
+            background-color: #f9fafb;
+            flex-shrink: 0;
+        }
+        .select-all.all-selected {
+            background-color: #e3f2fd;
+            color: #1e88e5;
+        }
+    </style>
+</head>
+<body id="appBody" class="mobile-view"> 
+
+    <div class="view-controls">
+        <button id="mobileViewButton" class="px-4 py-2 rounded-md font-semibold text-white bg-blue-500 hover:bg-blue-600">
+            모바일 뷰 (375px)
+        </button>
+        <button id="tabletViewButton" class="px-4 py-2 rounded-md font-semibold text-gray-700 bg-gray-200 hover:bg-gray-300">
+            태블릿 뷰 (1180px)
+        </button>
+    </div>
+
+    <div class="phone-frame" id="phoneFrame">
+        <div class="phone-content">
+            <h1 class="text-xl font-bold text-center text-gray-800">트리 뷰 멀티콤보박스</h1>
+            <p class="text-sm text-center text-gray-500 mt-2">아래 입력창을 터치하여 선택하세요. (부모 선택 시 자식 포함)</p>
+            <div class="relative w-full max-w-xs" id="triggerWrapper">
+                <input type="text" id="triggerInput" class="rounded-lg p-3 pr-10 text-lg text-gray-700 w-full cursor-pointer focus:outline-none border border-gray-300" placeholder="선택하세요" readonly>
+                <svg class="w-5 h-5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </div>
+        </div>
+        
+        <div class="mobile-popup-overlay" id="popupOverlay">
+            <div class="dropdown-container">
+                
+                <div class="popup-main" id="popupMainContent">
+                    
+                    <div class="list-all">
+                        <div class="search-input-wrapper">
+                            <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                            <input type="text" id="searchInput" class="search-input">
+                            <div id="clearButton" class="clear-button">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </div>
+                        </div>
+                        
+                        <div class="select-all" id="selectAllButton">
+                                <span>전체 선택 (모든 최상위 항목)</span>
+                            </div>
+
+                        <div id="optionList" class="option-list"></div>
+                    </div>
+                    
+                    <div class="list-selected" id="listSelectedDiv" style="display:none;">
+                        <div class="option-list" id="selectedList">
+                            <div class="p-4 text-gray-500 text-sm italic" id="selectedListPlaceholder">선택된 항목이 없습니다.</div>
+                            </div>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button id="resetButton" class="action-button reset">초기화</button>
+                    <button id="confirmButton" class="action-button confirm">확인 (0개)</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // -----------------------------------------------------
+            // 1. 트리 뷰를 위한 새로운 더미 데이터 구조 정의 
+            // -----------------------------------------------------
+            const treeData = [
+                { 
+                    id: 'g1', label: '커피 라떼', children: [
+                        { id: 1, label: '카페라떼' },
+                        { id: 2, label: '바닐라라떼' },
+                        { id: 3, label: '카라멜 마키아또' },
+                        { id: 'g1-1', label: '스페셜 라떼', children: [
+                            { id: 4, label: '멜론라떼' },
+                            { id: 5, label: '딸기크리미라떼' },
+                            { id: 6, label: '제주말차크리미라떼' }
+                        ]}
+                    ] 
+                },
+                { 
+                    id: 'g2', label: '에스프레소 & 기본 커피', children: [
+                        { id: 7, label: '아메리카노' },
+                        { id: 8, label: '에스프레소' },
+                        { id: 9, label: '카페모카' }
+                    ] 
+                },
+                { id: 10, label: '단일 메뉴 (기타)' },
+                { id: 11, label: '단짠치즈티라떼' },
+                { id: 12, label: '영암고구마라떼' },
+                { id: 13, label: '공주밤라떼' }
+            ];
+
+            const allLeafItems = new Map();
+            const allItemsMap = new Map();
+
+            function flattenTree(nodes, parentId = null) {
+                nodes.forEach(item => {
+                    const childrenIds = item.children ? item.children.map(c => c.id) : [];
+                    allItemsMap.set(item.id, {...item, children: childrenIds, parentId});
+
+                    if (!item.children || item.children.length === 0) {
+                        allLeafItems.set(item.id, { id: item.id, label: item.label });
+                    } else {
+                        flattenTree(item.children, item.id);
+                    }
+                });
+            }
+            flattenTree(treeData);
+
+            // DOM 요소 참조
+            const appBody = document.getElementById('appBody');
+            const triggerInput = document.getElementById('triggerInput');
+            const popupOverlay = document.getElementById('popupOverlay');
+            const optionList = document.getElementById('optionList');
+            const searchInput = document.getElementById('searchInput');
+            const clearButton = document.getElementById('clearButton');
+            const selectAllButton = document.getElementById('selectAllButton');
+            const resetButton = document.getElementById('resetButton');
+            const confirmButton = document.getElementById('confirmButton');
+            const mobileButton = document.getElementById('mobileViewButton'); 
+            const tabletButton = document.getElementById('tabletViewButton'); 
+            
+            let selectedItems = new Map(); 
+            let committedItems = new Map(); 
+            let currentView = 'mobile'; 
+            
+            let treeToggleState = new Map(); 
+
+            // --- 뷰 전환 로직 ---
+
+            function isTabletView() {
+                return currentView === 'tablet';
+            }
+
+            function setView(view) {
+                if (view === 'tablet') {
+                    appBody.classList.remove('mobile-view');
+                    appBody.classList.add('tablet-view');
+                    tabletButton.classList.replace('bg-gray-200', 'bg-blue-500');
+                    tabletButton.classList.replace('text-gray-700', 'text-white');
+                    mobileButton.classList.replace('bg-blue-500', 'bg-gray-200');
+                    mobileButton.classList.replace('text-white', 'text-gray-700');
+                    currentView = 'tablet';
+                } else { // mobile
+                    appBody.classList.remove('tablet-view');
+                    appBody.classList.add('mobile-view');
+                    mobileButton.classList.replace('bg-gray-200', 'bg-blue-500');
+                    mobileButton.classList.replace('text-gray-700', 'text-white');
+                    tabletButton.classList.replace('bg-blue-500', 'bg-gray-200');
+                    tabletButton.classList.replace('text-white', 'text-gray-700');
+                    currentView = 'mobile';
+                }
+                
+                if (popupOverlay.classList.contains('show')) {
+                    popupOverlay.classList.remove('show');
+                }
+            }
+            
+            mobileButton.addEventListener('click', () => setView('mobile'));
+            tabletButton.addEventListener('click', () => setView('tablet'));
+            
+            // -----------------------------------------------------
+            // 2. 트리 뷰 렌더링 함수
+            // -----------------------------------------------------
+
+            function getNodeSelectionStatus(node) {
+                const nodeData = allItemsMap.get(node.id);
+                if (!nodeData || !nodeData.children || nodeData.children.length === 0) {
+                    return selectedItems.has(node.id) ? 2 : 0;
+                }
+
+                let selectedCount = 0;
+                let totalLeafCount = 0;
+                
+                const processChildren = (children) => {
+                    children.forEach(childId => {
+                        const childNode = allItemsMap.get(childId);
+                        if (!childNode) return; 
+                        
+                        if (!childNode.children || childNode.children.length === 0) {
+                            totalLeafCount++;
+                            if (selectedItems.has(childNode.id)) {
+                                selectedCount++;
+                            }
+                        } else {
+                            processChildren(childNode.children);
+                        }
+                    });
+                };
+                
+                processChildren(nodeData.children);
+                
+                if (selectedCount === 0) return 0;
+                if (selectedCount === totalLeafCount) return 2;
+                return 1;
+            }
+
+            /**
+             * 트리를 재귀적으로 렌더링하고, 검색 조건에 따라 자식 항목의 가시성을 결정합니다.
+             */
+            function renderTree(nodes, depth = 0) {
+                let html = '';
+                const query = searchInput.value.toLowerCase();
+                
+                nodes.forEach(node => {
+                    const isVisibleBySearch = query === '' || 
+                                              node.label.toLowerCase().includes(query) || 
+                                              (node.children && node.children.some(childId => allItemsMap.get(childId)?.label.toLowerCase().includes(query)));
+                    
+                    if (!isVisibleBySearch && query !== '') return; 
+
+                    const nodeData = allItemsMap.get(node.id);
+                    const hasChildren = nodeData.children && nodeData.children.length > 0;
+                    const isExpanded = treeToggleState.get(node.id) === true;
+                    
+                    const selectionStatus = getNodeSelectionStatus(node);
+                    const isChecked = selectionStatus === 2;
+                    const isIndeterminate = selectionStatus === 1;
+
+                    // 항목 자체의 HTML
+                    html += `
+                        <div class="option-item" data-id="${node.id}" data-label="${node.label}" style="padding-left: calc(1rem + ${depth * 1}rem);">
+                            <div class="option-item-content">
+                                
+                                <div class="checkbox-container ${isChecked ? 'checked' : ''} ${isIndeterminate ? 'indeterminate' : ''}" data-id="${node.id}" data-action="select">
+                                    <svg class="w-4 h-4 full" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                                    <svg class="w-4 h-4 partial" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M18 12H6"></path></svg>
+                                </div>
+                                <span class="option-label" data-id="${node.id}" data-action="select">${node.label}</span>
+                                
+                                ${hasChildren ? 
+                                    `<div class="tree-toggle ${isExpanded ? 'expanded' : ''}" data-id="${node.id}" data-action="toggle">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                                    </div>` : 
+                                    `<div class="no-children"></div>`
+                                }
+                            </div>
+                        </div>
+                    `;
+
+                    // 자식 항목의 HTML (재귀 호출)
+                    if (hasChildren && (isExpanded || query !== '')) { 
+                        const childNodes = nodeData.children.map(childId => allItemsMap.get(childId));
+                        
+                        const isHidden = !isExpanded && query === ''; 
+
+                        html += `<div class="tree-children ${isHidden ? 'hidden' : ''}">`;
+                        html += renderTree(childNodes, depth + 1);
+                        html += `</div>`;
+                    }
+                });
+                
+                return html;
+            }
+
+            function renderOptions() {
+                optionList.innerHTML = renderTree(treeData.map(node => allItemsMap.get(node.id)));
+            }
+            
+            function updateConfirmButton() {
+                confirmButton.textContent = `확인 (${selectedItems.size}개)`;
+            }
+
+            function updateSelectAllUI() {
+                const totalLeafCount = allLeafItems.size;
+                const isAllSelected = selectedItems.size === totalLeafCount;
+                selectAllButton.classList.toggle('all-selected', isAllSelected);
+            }
+
+            function updateUIOnSelectionChange() {
+                renderOptions();
+                updateConfirmButton();
+                updateSelectAllUI();
+            }
+
+            // -----------------------------------------------------
+            // 3. 트리 선택/해제 로직
+            // -----------------------------------------------------
+
+            function recursivelyToggleSelection(node, shouldSelect) {
+                const nodeData = allItemsMap.get(node.id);
+                if (!nodeData) return;
+
+                if (!nodeData.children || nodeData.children.length === 0) {
+                    if (shouldSelect) {
+                        selectedItems.set(nodeData.id, { id: nodeData.id, label: nodeData.label });
+                    } else {
+                        selectedItems.delete(nodeData.id);
+                    }
+                } else {
+                    nodeData.children.forEach(childId => {
+                        const childNode = allItemsMap.get(childId);
+                        recursivelyToggleSelection(childNode, shouldSelect);
+                    });
+                }
+            }
+
+            function toggleItem(itemId) {
+                const node = allItemsMap.get(itemId);
+                if (!node) return;
+                
+                const currentStatus = getNodeSelectionStatus(node);
+                const shouldSelect = currentStatus === 0;
+
+                recursivelyToggleSelection(node, shouldSelect);
+                updateUIOnSelectionChange();
+            }
+            
+            function toggleAllItems() {
+                const totalLeafCount = allLeafItems.size;
+                const isAllSelected = selectedItems.size === totalLeafCount;
+                
+                if (isAllSelected) {
+                    selectedItems.clear();
+                } else {
+                    selectedItems.clear();
+                    Array.from(allLeafItems.values()).forEach(item => {
+                        selectedItems.set(item.id, item);
+                    });
+                }
+                
+                updateUIOnSelectionChange();
+            }
+
+            // 초기 뷰 설정
+            setView('mobile');
+            renderOptions();
+            updateConfirmButton();
+
+            // 팝업 열기 이벤트
+            triggerInput.addEventListener('click', (event) => {
+                committedItems = new Map(selectedItems); 
+                searchInput.value = ''; 
+                renderOptions(); 
+                updateUIOnSelectionChange();
+                popupOverlay.classList.add('show');
+                event.stopPropagation();
+            });
+
+            // 팝업 닫기 (오버레이 클릭 시 또는 ESC 키) - 취소 기능
+            function closePopupAndRevert() {
+                if (popupOverlay.classList.contains('show')) {
+                    selectedItems = new Map(committedItems); 
+                    renderOptions(); 
+                    updateConfirmButton();
+                    popupOverlay.classList.remove('show');
+                }
+            }
+            
+            popupOverlay.addEventListener('click', (event) => {
+                if (event.target.id === 'popupOverlay') {
+                    closePopupAndRevert();
+                }
+            });
+            
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape') {
+                    closePopupAndRevert();
+                }
+            });
+
+            // 검색 기능 구현
+            searchInput.addEventListener('input', () => {
+                renderOptions();
+                updateUIOnSelectionChange(); 
+            });
+            
+            // 검색창 초기화 버튼
+            clearButton.addEventListener('click', () => {
+                searchInput.value = '';
+                renderOptions();
+            });
+
+            // 전체 선택 버튼 이벤트 리스너
+            selectAllButton.addEventListener('click', toggleAllItems);
+
+            // 목록 클릭 이벤트 리스너 (토글 및 선택)
+            optionList.addEventListener('click', (event) => {
+                const target = event.target;
+                
+                // 클릭된 요소의 부모 중 data-action="toggle" 속성을 가진 요소를 찾음
+                const toggleEl = target.closest('[data-action="toggle"]');
+                
+                if (toggleEl) {
+                    // 1. 트리 토글 버튼 클릭 처리 (확장/축소)
+                    const id = toggleEl.getAttribute('data-id');
+                    const isExpanded = treeToggleState.get(id) === true;
+                    treeToggleState.set(id, !isExpanded);
+                    renderOptions();
+                    return;
+                }
+
+                // 2. 체크박스 또는 레이블 클릭 (선택/해제)
+                const selectEl = target.closest('[data-action="select"]');
+                
+                let itemId;
+                if (selectEl) {
+                    itemId = selectEl.getAttribute('data-id');
+                } else if (target.closest('.option-item')) {
+                    // 항목의 빈 영역을 클릭한 경우
+                    itemId = target.closest('.option-item').getAttribute('data-id');
+                }
+
+                if (itemId) {
+                    toggleItem(itemId);
+                }
+            });
+            
+            // 초기화 버튼: 모든 선택 항목 해제
+            resetButton.addEventListener('click', () => {
+                selectedItems.clear();
+                searchInput.value = '';
+                updateUIOnSelectionChange();
+            });
+            
+            // 확인 버튼: 선택 확정, 트리거 입력창 업데이트, 팝업 닫기
+            confirmButton.addEventListener('click', () => {
+                const selectedLabels = Array.from(selectedItems.values()).map(item => item.label);
+                
+                triggerInput.value = selectedLabels.join(', ');
+                committedItems = new Map(selectedItems);
+                popupOverlay.classList.remove('show');
+            });
+            
+            // 초기 렌더링
+            renderOptions(); 
+        });
+    </script>
+</body>
+</html>
