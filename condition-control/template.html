@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>반응형 뷰 전환 템플릿</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* ----------------------------------------------------- */
+        /* 기본 레이아웃 및 뷰 전환 스타일 */
+        /* ----------------------------------------------------- */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #5c6470;
+            display: flex;
+            flex-direction: column; /* 버튼과 프레임을 세로로 배치 */
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 2rem 1rem;
+        }
+
+        .view-controls {
+            margin-bottom: 1.5rem;
+            display: flex;
+            gap: 1rem;
+        }
+
+        .phone-frame {
+            position: relative;
+            width: 375px; /* 📱 모바일 뷰 기본 너비 */
+            height: 667px;
+            background-color: #fff;
+            border-radius: 8px;
+            border: 1px solid #5c6470;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease-in-out; /* 너비/높이 전환 애니메이션 */
+        }
+
+        .tablet-view .phone-frame {
+            width: 1180px; /* 💻 태블릿 뷰 너비로 확장 */
+            height: 768px;
+        }
+
+        .phone-content {
+            padding: 1.5rem;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center; /* 내용을 중앙에 배치 */
+            gap: 1.5rem;
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #3b82f6;
+        }
+    </style>
+</head>
+<body id="appBody" class="mobile-view"> 
+
+    <div class="view-controls">
+        <button id="mobileViewButton" class="px-4 py-2 rounded-md font-semibold text-white bg-blue-500 hover:bg-blue-600">
+            모바일 뷰 (375px)
+        </button>
+        <button id="tabletViewButton" class="px-4 py-2 rounded-md font-semibold text-gray-700 bg-gray-200 hover:bg-gray-300">
+            태블릿 뷰 (1180px)
+        </button>
+    </div>
+
+    <div class="phone-frame" id="phoneFrame">
+        <div class="phone-content">
+            <p>현재 뷰: <span id="currentViewDisplay">모바일</span></p>
+        </div>
+        
+        </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // DOM 요소 참조
+            const appBody = document.getElementById('appBody');
+            const mobileButton = document.getElementById('mobileViewButton');
+            const tabletButton = document.getElementById('tabletViewButton');
+            const currentViewDisplay = document.getElementById('currentViewDisplay');
+            
+            let currentView = 'mobile'; // 현재 뷰 상태
+
+            // --- 뷰 전환 로직 ---
+
+            // 뷰를 설정하고 UI를 업데이트하는 함수
+            function setView(view) {
+                if (view === 'tablet') {
+                    appBody.classList.remove('mobile-view');
+                    appBody.classList.add('tablet-view');
+                    
+                    // 버튼 스타일 업데이트
+                    tabletButton.classList.replace('bg-gray-200', 'bg-blue-500');
+                    tabletButton.classList.replace('text-gray-700', 'text-white');
+                    mobileButton.classList.replace('bg-blue-500', 'bg-gray-200');
+                    mobileButton.classList.replace('text-white', 'text-gray-700');
+                    
+                    currentViewDisplay.textContent = '태블릿';
+                    currentView = 'tablet';
+                } else { // mobile
+                    appBody.classList.remove('tablet-view');
+                    appBody.classList.add('mobile-view');
+                    
+                    // 버튼 스타일 업데이트
+                    mobileButton.classList.replace('bg-gray-200', 'bg-blue-500');
+                    mobileButton.classList.replace('text-gray-700', 'text-white');
+                    tabletButton.classList.replace('bg-blue-500', 'bg-gray-200');
+                    tabletButton.classList.replace('text-white', 'text-gray-700');
+
+                    currentViewDisplay.textContent = '모바일';
+                    currentView = 'mobile';
+                }
+            }
+            
+            // 뷰 전환 버튼 이벤트 리스너
+            mobileButton.addEventListener('click', () => setView('mobile'));
+            tabletButton.addEventListener('click', () => setView('tablet'));
+            
+            // 초기 뷰 설정
+            setView('mobile'); // 기본은 모바일 뷰로 시작
+        });
+    </script>
+</body>
+</html>
