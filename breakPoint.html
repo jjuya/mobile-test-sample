@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ko">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>반응형 Breakpoint 예제</title>
+        <style>
+            /* -------------------------------------- */
+            /* 기본 스타일 (모바일 우선) */
+            /* -------------------------------------- */
+            body {
+                margin: 0;
+                font-family: Arial, sans-serif;
+            }
+            .container {
+                max-width: 1200px;
+                margin: 0 auto;
+                padding: 20px;
+            }
+            .layout-indicator {
+                padding: 10px;
+                text-align: center;
+                font-weight: bold;
+                margin-bottom: 20px;
+                color: white;
+                background-color: #3498db; /* Mobile 기본 색상 (파란색) */
+            }
+
+            /* 기존 텍스트를 숨기고, 새로운 텍스트를 위한 공간 확보 */
+            .layout-indicator {
+                /* 기존 HTML에 있는 "현재 레이아웃:" 텍스트를 숨깁니다. */
+                font-size: 0;
+                line-height: 0;
+            }
+            /* 모바일 텍스트를 기본으로 설정 */
+            .layout-indicator::after {
+                font-size: 16px; /* 텍스트 다시 보이게 */
+                line-height: 1.5;
+                content: "현재 레이아웃: 모바일 레이아웃 (765px 이하)";
+            }
+
+            .column {
+                background-color: #ecf0f1;
+                border: 1px solid #bdc3c7;
+                padding: 15px;
+                margin-bottom: 10px;
+                text-align: center;
+            }
+
+            /* -------------------------------------- */
+            /* 1. 태블릿 Breakpoint 적용 (766px 이상) */
+            /* -------------------------------------- */
+            @media (min-width: 766px) {
+                .layout-indicator {
+                    background-color: #2ecc71; /* Tablet 색상 (초록색) */
+                }
+                /* 태블릿 텍스트로 덮어쓰기 */
+                .layout-indicator::after {
+                    content: "현재 레이아웃: 태블릿 레이아웃 (766px ~ 1199px)";
+                }
+                .column-wrapper {
+                    display: flex;
+                    gap: 10px;
+                }
+                .column {
+                    width: 50%;
+                    margin-bottom: 0;
+                }
+            }
+
+            /* -------------------------------------- */
+            /* 2. PC Breakpoint 적용 (1200px 이상) */
+            /* -------------------------------------- */
+            @media (min-width: 1200px) {
+                body {
+                    background-color: #f0f0f0;
+                }
+                .layout-indicator {
+                    background-color: #e74c3c; /* PC 색상 (빨간색) */
+                }
+                /* PC 텍스트로 덮어쓰기 */
+                .layout-indicator::after {
+                    content: "현재 레이아웃: PC 레이아웃 (1200px 이상)";
+                }
+                .column {
+                    width: calc(33.33% - 10px);
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="layout-indicator">현재 레이아웃:</div>
+        <div class="container">
+            <h1>반응형 Breakpoint 예제</h1>
+            <p>
+                브라우저 창 크기를 줄여보세요. 화면 너비에 따라 배경색과
+                레이아웃이 변합니다.
+            </p>
+
+            <div class="column-wrapper">
+                <div class="column">Column 1</div>
+                <div class="column">Column 2</div>
+                <div class="column">Column 3</div>
+            </div>
+        </div>
+    </body>
+</html>
