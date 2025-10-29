@@ -200,7 +200,7 @@
         </div>
 
         <script>
-            /* --- JavaScript 로직 시작 --- */
+            /* --- JavaScript 로직 시작 (수정됨) --- */
             let currentPopupId = null;
             const dimmer = document.getElementById("app-dimmer");
             const bottomPopup = document.getElementById("bottom-slide-popup");
@@ -210,18 +210,26 @@
              * 팝업을 여는 함수
              */
             function openPopup(type) {
+                // 1. Dimmer와 팝업 요소의 display를 'block'/'flex'로 설정하여 렌더링되게 함
                 dimmer.style.display = "block";
-                setTimeout(() => {
-                    dimmer.classList.add("active");
-                }, 10);
-
                 if (type === "bottom") {
-                    bottomPopup.classList.add("active");
+                    bottomPopup.style.display = "flex";
                     currentPopupId = "bottom";
                 } else if (type === "modal") {
-                    modalPopup.classList.add("active");
+                    modalPopup.style.display = "flex";
                     currentPopupId = "modal";
                 }
+
+                // 2. 짧은 딜레이 후 active 클래스를 추가하여 CSS transition(애니메이션) 실행
+                setTimeout(() => {
+                    dimmer.classList.add("active");
+                    if (type === "bottom") {
+                        bottomPopup.classList.add("active");
+                    } else if (type === "modal") {
+                        modalPopup.classList.add("active");
+                    }
+                }, 10); // 브라우저가 display 설정을 처리할 시간을 줌
+
                 handleViewportChange();
             }
 
@@ -244,17 +252,22 @@
                         !modalPopup.classList.contains("active")
                     ) {
                         dimmer.classList.remove("active");
-                        dimmer.style.display = "none"; // 애니메이션 후 display none
-                        currentPopupId = null; // 모든 팝업 닫힘 상태
+
+                        // Dimmer 애니메이션 시간(0.3s) 후 완전히 숨김
+                        setTimeout(() => {
+                            dimmer.style.display = "none";
+                            bottomPopup.style.display = "none";
+                            modalPopup.style.display = "none";
+                            currentPopupId = null;
+                        }, 300);
                     }
-                }, 300); // CSS transition 시간(0.3s)과 맞춤
+                }, 50); // 팝업 닫힘 애니메이션 시작을 위한 짧은 딜레이
             }
 
             /**
              * Dimmer 클릭 시 호출되는 함수 (외부 클릭으로 닫기)
              */
             function closeAllPopups() {
-                // 현재 열려있는 팝업을 확인하여 닫음
                 if (currentPopupId) {
                     closePopup(currentPopupId);
                 }
@@ -264,10 +277,10 @@
              * 팝업 스타일을 초기 상태로 되돌리는 함수
              */
             function resetPopup(popupElement, type) {
+                // 키보드 대응으로 인한 inline 스타일 초기화
                 if (type === "bottom") {
                     popupElement.style.maxHeight = "";
-                    // .active 클래스가 transform: translateY(0)을 처리, 키보드 닫힐 때 transform은 초기화되어야 함
-                    popupElement.style.transform = "";
+                    popupElement.style.transform = ""; // .active가 없으면 CSS 기본값(translateY(100%))으로 돌아가야 함
                 } else if (type === "modal") {
                     popupElement.style.maxHeight = "";
                 }
@@ -294,7 +307,7 @@
                         bottomPopup.style.maxHeight = `${vv.height}px`;
                         bottomPopup.style.transform = `translateY(-${keyboardHeight}px)`;
                     } else {
-                        // 키보드 닫힘: 기본 transform으로 복구
+                        // 키보드 닫힘: 기본 active 상태의 transform으로 복구 (CSS가 처리)
                         bottomPopup.style.maxHeight = "";
                         bottomPopup.style.transform = "";
                     }
