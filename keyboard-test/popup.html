@@ -17,6 +17,13 @@
                 padding-bottom: 20px;
             }
 
+            body.no-scroll {
+                overflow: hidden !important;
+                position: fixed !important;
+                width: 100% !important;
+                top: 0;
+            }
+
             .content {
                 padding: 20px;
             }
@@ -220,20 +227,23 @@
         </div>
 
         <script>
-            /* --- JavaScript 로직 시작 (수정됨) --- */
+            /* --- JavaScript 로직 시작 (최종 수정) --- */
             const HEADER_MARGIN = 16; // 팝업 상/하단에 확보할 여백 크기 (px)
-
             let currentPopupId = null;
+            let savedScrollY = 0; // 스크롤 위치 저장 변수 추가
+
             const dimmer = document.getElementById("app-dimmer");
             const bottomPopup = document.getElementById("bottom-slide-popup");
             const modalPopup = document.getElementById("modal-popup");
 
             /**
-             * 팝업을 여는 함수
+             * 팝업을 여는 함수 (스크롤 방지 로직 포함)
              */
             function openPopup(type) {
-                // 팝업 열릴 때 body 스크롤 막기
-                document.body.style.overflow = "hidden";
+                // ⚠️ 배경 스크롤 방지 로직 (iOS 버그 대응)
+                savedScrollY = window.scrollY; // 현재 스크롤 위치 저장
+                document.body.style.top = `-${savedScrollY}px`; // body를 위로 당겨 스크롤 위치 유지
+                document.body.classList.add("no-scroll"); // fixed 포지션 및 overflow: hidden 적용
 
                 // 1. Dimmer 활성화
                 dimmer.classList.add("active");
@@ -247,12 +257,11 @@
                     currentPopupId = "modal";
                 }
 
-                // 열릴 때 키보드 상태를 바로 반영
                 handleViewportChange();
             }
 
             /**
-             * 팝업을 닫는 함수
+             * 팝업을 닫는 함수 (스크롤 복구 로직 포함)
              */
             function closePopup(type) {
                 if (type === "bottom") {
@@ -263,7 +272,6 @@
                     resetPopup(modalPopup, "modal");
                 }
 
-                // 닫힘 애니메이션 시간(0.3s) 후에 팝업이 완전히 닫혔는지 확인하고 Dimmer/스크롤 복구
                 setTimeout(() => {
                     if (
                         !bottomPopup.classList.contains("active") &&
@@ -272,35 +280,29 @@
                         dimmer.classList.remove("active");
                         currentPopupId = null;
 
-                        // 팝업 모두 닫힐 때 body 스크롤 복구
-                        document.body.style.overflow = "";
+                        // ⚠️ 배경 스크롤 복구 로직
+                        document.body.classList.remove("no-scroll");
+                        document.body.style.top = ""; // inline style 제거
+                        window.scrollTo(0, savedScrollY); // 저장된 스크롤 위치로 복원
                     }
                 }, 300);
             }
 
-            /**
-             * Dimmer 클릭 시 호출되는 함수 (외부 클릭으로 닫기)
-             */
-            function closeAllPopups() {
-                if (currentPopupId) {
-                    closePopup(currentPopupId);
-                }
-            }
+            // ... (closeAllPopups, resetPopup 함수는 기존 로직 유지)
 
             /**
-             * 팝업 스타일을 초기 상태로 되돌리는 함수
+             * 팝업 스타일을 초기 상태로 되돌리는 함수 (body scroll 복구 로직을 closePopup으로 이동)
              */
             function resetPopup(popupElement, type) {
-                // 키보드 대응으로 인한 inline 스타일 초기화
                 if (type === "bottom") {
                     popupElement.style.maxHeight = "";
-                    popupElement.style.top = "auto"; // top 초기화
-                    popupElement.style.bottom = "0"; // bottom: 0 복구
-                    popupElement.style.transform = ""; // CSS의 translateY(0) 복구
+                    popupElement.style.top = "auto";
+                    popupElement.style.bottom = "0";
+                    popupElement.style.transform = "";
                 } else if (type === "modal") {
                     popupElement.style.maxHeight = "";
-                    popupElement.style.top = "50%"; // CSS 기본값 복구
-                    popupElement.style.transform = "translate(-50%, -50%)"; // CSS 기본값 복구
+                    popupElement.style.top = "50%";
+                    popupElement.style.transform = "translate(-50%, -50%)";
                 }
             }
 
@@ -312,7 +314,6 @@
                 const layoutHeight = window.innerHeight;
 
                 const isKeyboardVisible = vv.height < layoutHeight;
-                // const keyboardHeight = layoutHeight - vv.height; // 사용하지 않아도 됨
 
                 if (!currentPopupId) return;
 
@@ -322,17 +323,14 @@
                     bottomPopup.classList.contains("active")
                 ) {
                     if (isKeyboardVisible) {
-                        // 상단 16px 여백을 확보하도록 계산
                         const newTop = vv.offsetTop + HEADER_MARGIN;
                         const newMaxHeight = vv.height - HEADER_MARGIN;
 
-                        // 위치와 크기 설정 (스크롤 및 여백 확보)
                         bottomPopup.style.maxHeight = `${newMaxHeight}px`;
                         bottomPopup.style.top = `${newTop}px`;
-                        bottomPopup.style.bottom = "auto"; // bottom:0 무시
-                        bottomPopup.style.transform = "translateY(0)"; // transform: translateY(100%) 무시
+                        bottomPopup.style.bottom = "auto";
+                        bottomPopup.style.transform = "translateY(0)";
                     } else {
-                        // 키보드 닫힘: CSS 기본 상태로 복구
                         bottomPopup.style.maxHeight = "";
                         bottomPopup.style.top = "auto";
                         bottomPopup.style.bottom = "0";
@@ -346,16 +344,13 @@
                     modalPopup.classList.contains("active")
                 ) {
                     if (isKeyboardVisible) {
-                        // 상하 16px 여백 확보
                         const newMaxHeight = vv.height - HEADER_MARGIN * 2;
                         const newTop = vv.offsetTop + HEADER_MARGIN;
 
-                        // 위치와 크기 설정 (상하 여백 및 스크롤 제한)
                         modalPopup.style.maxHeight = `${newMaxHeight}px`;
                         modalPopup.style.top = `${newTop}px`;
-                        modalPopup.style.transform = `translateX(-50%)`; // Y축 중앙 정렬 제거
+                        modalPopup.style.transform = `translateX(-50%)`;
                     } else {
-                        // 키보드 닫힘: CSS 기본 상태로 복구
                         modalPopup.style.maxHeight = "";
                         modalPopup.style.top = "50%";
                         modalPopup.style.transform = "translate(-50%, -50%)";
