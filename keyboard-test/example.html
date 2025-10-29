@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ko">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>rAF 기반 VisualViewport 예제 (PC+모바일)</title>
+        <style>
+            html,
+            body {
+                margin: 0;
+                padding: 0;
+                height: 100%;
+            }
+            .wrap {
+                position: relative;
+                height: 100%;
+                overflow-y: auto;
+                background: #fff3cf;
+            }
+            #make-scrollable {
+                position: absolute;
+                left: 0;
+                width: 1px;
+                height: calc(100% + 1px);
+            }
+            input[type="text"] {
+                display: block;
+                width: 90%;
+                margin: 20px auto;
+                padding: 10px;
+                font-size: 16px;
+            }
+            .viewport-box {
+                position: absolute;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 90%;
+                background: rgba(0, 128, 0, 0.2);
+                border: 2px dashed green;
+                pointer-events: none;
+            }
+            .fixed-bottom {
+                position: absolute;
+                left: 0;
+                right: 0;
+                height: 60px;
+                background: #007bff;
+                color: white;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .info {
+                margin: 5px 20px;
+                font-size: 14px;
+                color: #333;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="wrap" id="wrap">
+            <input type="text" placeholder="입력해보세요" />
+            <div id="make-scrollable"></div>
+            <div class="viewport-box" id="viewportBox"></div>
+            <div class="fixed-bottom" id="fixedBottom">Fixed 영역</div>
+        </div>
+
+        <div class="info" id="wScroll">w-scroll: 0</div>
+        <div class="info" id="vScroll">viewport-scroll: 0</div>
+        <div class="info" id="bodyH">body-H: 0</div>
+        <div class="info" id="winH">window-H: 0</div>
+        <div class="info" id="vpH">viewport-H: 0</div>
+
+        <script>
+            const wScrollEl = document.getElementById("wScroll");
+            const vScrollEl = document.getElementById("vScroll");
+            const bodyEl = document.getElementById("bodyH");
+            const winEl = document.getElementById("winH");
+            const vpEl = document.getElementById("vpH");
+            const vpBox = document.getElementById("viewportBox");
+            const fixed = document.getElementById("fixedBottom");
+
+            let currentVpTop = 0;
+            let currentVpHeight = 0;
+            let currentFixedTop = 0;
+
+            function lerp(a, b, t) {
+                return a + (b - a) * t;
+            }
+
+            function getTargets() {
+                const vv = window.visualViewport;
+                const winH = window.innerHeight;
+                const bodyH = document.body.offsetHeight;
+
+                const vpH = vv ? vv.height : winH;
+                const vpOffsetTop = vv ? vv.offsetTop : window.scrollY;
+                const vpPageTop = vv ? vv.pageTop || 0 : window.scrollY;
+
+                const isKeyboard = winH > vpH;
+                const targetFixedTop = isKeyboard
+                    ? vpOffsetTop + vpH - fixed.offsetHeight
+                    : winH - fixed.offsetHeight;
+
+                return {
+                    vpTop: vpOffsetTop,
+                    vpHeight: vpH,
+                    fixedTop: targetFixedTop,
+                    bodyH,
+                    winH,
+                    vpPageTop,
+                };
+            }
+
+            function animate() {
+                const t = getTargets();
+
+                currentVpTop = lerp(currentVpTop, t.vpTop, 0.2);
+                currentVpHeight = lerp(currentVpHeight, t.vpHeight, 0.2);
+                currentFixedTop = lerp(currentFixedTop, t.fixedTop, 0.2);
+
+                vpBox.style.top = currentVpTop + "px";
+                vpBox.style.height = currentVpHeight + "px";
+                fixed.style.top = currentFixedTop + "px";
+
+                wScrollEl.textContent = "w-scroll: " + window.scrollY;
+                vScrollEl.textContent = "viewport-scroll: " + t.vpPageTop;
+                bodyEl.textContent = "body-H: " + t.bodyH;
+                winEl.textContent = "window-H: " + t.winH;
+                vpEl.textContent = "viewport-H: " + t.vpHeight;
+
+                requestAnimationFrame(animate);
+            }
+
+            animate();
+        </script>
+    </body>
+</html>
