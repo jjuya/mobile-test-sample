@@ -228,9 +228,13 @@
         </div>
 
         <script>
-            /* --- JavaScript 로직 시작 (최종 스크롤 차단 로직 적용) --- */
+            /* --- JavaScript 로직 시작 (최종 스크롤 차단 및 여백 조정 로직 적용) --- */
 
-            const HEADER_MARGIN = 32;
+            // ⚠️ 하단 슬라이드 팝업 상단 여백 설정 (120px)
+            const BOTTOM_POPUP_MARGIN_TOP = 120;
+            // ⚠️ 모달 팝업 상하단 여백 설정 (64px)
+            const MODAL_MARGIN = 64;
+
             let currentPopupId = null;
             let savedScrollY = 0; // 배경 스크롤 위치 저장 변수
 
@@ -244,10 +248,9 @@
                 const target = e.target;
 
                 // 타겟 요소가 'popup-body' 클래스를 포함하는 부모 요소 내부에 있는지 확인
-                // 즉, 팝업 내용 영역(스크롤 허용 영역)인지 체크합니다.
                 const isInsideScrollablePopup = target.closest(".popup-body");
 
-                // 팝업 바디 내부가 아닌 경우 (즉, 배경 Dimmer나 스크롤되면 안되는 영역인 경우)에만 preventDefault() 실행
+                // 팝업 바디 내부가 아닌 경우에만 preventDefault() 실행 (배경 스크롤 차단)
                 if (!isInsideScrollablePopup) {
                     e.preventDefault();
                     return false;
@@ -263,15 +266,13 @@
                 document.body.style.top = `-${savedScrollY}px`;
                 document.body.classList.add("no-scroll");
 
-                // 2. touchmove 이벤트 차단 (이제 Dimmer가 아니라 Document 전체에 걸고, 내부에서 예외 처리)
-                // Document 전체에 걸어 모든 배경 터치를 막고, preventScroll 내부에서 팝업 바디만 허용
+                // 2. touchmove 이벤트 차단 및 내부 스크롤 허용 로직
                 document.addEventListener("touchmove", preventScroll, {
                     passive: false,
                 });
 
                 // 3. Dimmer 및 팝업 활성화
                 dimmer.classList.add("active");
-                // ... (팝업 활성화 로직은 동일)
                 if (type === "bottom") {
                     bottomPopup.classList.add("active");
                     currentPopupId = "bottom";
@@ -303,10 +304,12 @@
                         dimmer.classList.remove("active");
                         currentPopupId = null;
 
+                        // ⚠️ 배경 스크롤 복구 로직
                         document.body.classList.remove("no-scroll");
                         document.body.style.top = "";
                         window.scrollTo(0, savedScrollY);
 
+                        // touchmove 이벤트 차단 해제
                         document.removeEventListener(
                             "touchmove",
                             preventScroll
@@ -342,7 +345,7 @@
             }
 
             /**
-             * VisualViewport 변경 시 호출되는 메인 핸들러 (키보드 감지 로직)
+             * VisualViewport 변경 시 호출되는 메인 핸들러 (키보드 감지 및 여백 적용 로직)
              */
             function handleViewportChange() {
                 const vv = window.visualViewport;
@@ -357,14 +360,26 @@
                     bottomPopup.classList.contains("active")
                 ) {
                     if (isKeyboardVisible) {
-                        const newTop = vv.offsetTop + HEADER_MARGIN;
-                        const newMaxHeight = vv.height - HEADER_MARGIN;
+                        // 키보드가 올라왔을 때 (키보드 위에 붙임)
+                        const newTop = vv.offsetTop; // 키보드 위에 딱 붙임
+                        const newMaxHeight = vv.height; // 키보드 위까지 높이
 
-                        bottomPopup.style.maxHeight = `${newMaxHeight}px`;
-                        bottomPopup.style.top = `${newTop}px`;
+                        // 별도의 상단 여백 설정 (120px)
+                        const finalTop = Math.max(
+                            newTop,
+                            BOTTOM_POPUP_MARGIN_TOP
+                        );
+                        const finalMaxHeight = Math.min(
+                            newMaxHeight,
+                            layoutHeight - BOTTOM_POPUP_MARGIN_TOP
+                        );
+
+                        bottomPopup.style.maxHeight = `${finalMaxHeight}px`;
+                        bottomPopup.style.top = `${finalTop}px`;
                         bottomPopup.style.bottom = "auto";
                         bottomPopup.style.transform = "translateY(0)";
                     } else {
+                        // 키보드가 닫혔을 때 (하단에 붙임, 기본 max-height 복원)
                         bottomPopup.style.maxHeight = "";
                         bottomPopup.style.top = "auto";
                         bottomPopup.style.bottom = "0";
@@ -378,13 +393,15 @@
                     modalPopup.classList.contains("active")
                 ) {
                     if (isKeyboardVisible) {
-                        const newMaxHeight = vv.height - HEADER_MARGIN * 2;
-                        const newTop = vv.offsetTop + HEADER_MARGIN;
+                        // 키보드가 올라왔을 때
+                        const newMaxHeight = vv.height - MODAL_MARGIN * 2; // 상하 64px 여백 제외
+                        const newTop = vv.offsetTop + MODAL_MARGIN; // 상단 64px 여백
 
                         modalPopup.style.maxHeight = `${newMaxHeight}px`;
                         modalPopup.style.top = `${newTop}px`;
                         modalPopup.style.transform = `translateX(-50%)`;
                     } else {
+                        // 키보드가 닫혔을 때 (원래 중앙 위치로 복원)
                         modalPopup.style.maxHeight = "";
                         modalPopup.style.top = "50%";
                         modalPopup.style.transform = "translate(-50%, -50%)";
@@ -392,7 +409,7 @@
                 }
             }
 
-            // --- 이벤트 리스너 등록 ---
+            // --- 이벤트 리스너 등록 (생략 없음) ---
             if (window.visualViewport) {
                 window.visualViewport.addEventListener(
                     "resize",
