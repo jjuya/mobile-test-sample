@@ -228,26 +228,26 @@
         </div>
 
         <script>
-            /* --- JavaScript 로직 시작 (최종 스크롤/키보드 버그 해결) --- */
+            /* --- JavaScript 로직 (Android 스크롤 전파 차단 보강) --- */
 
-            // ⚠️ 하단 슬라이드 팝업 상단 여백 설정 (120px)
+            // (변수 선언은 그대로 유지)
             const BOTTOM_POPUP_MARGIN_TOP = 120;
-            // ⚠️ 모달 팝업 상하단 여백 설정 (64px)
             const MODAL_MARGIN = 64;
 
             let currentPopupId = null;
-            let savedScrollY = 0; // 배경 스크롤 위치 저장 변수
+            let savedScrollY = 0;
 
             const dimmer = document.getElementById("app-dimmer");
             const bottomPopup = document.getElementById("bottom-slide-popup");
             const modalPopup = document.getElementById("modal-popup");
 
+            let lastTouchY = 0; // 마지막 터치 Y 좌표를 저장할 변수 추가
+
             /**
-             * 팝업 내부 스크롤을 허용하고, 배경 스크롤 및 오버스크롤을 막는 함수
+             * 팝업 내부 스크롤을 허용하고, 스크롤 시작/끝 도달 시 배경 스크롤 전파를 막는 함수
              */
             function preventScroll(e) {
                 const target = e.target;
-                // 스크롤이 필요한 팝업 본체 영역을 찾습니다.
                 const scrollablePopupBody = target.closest(".popup-body");
 
                 // 1. 팝업 바디 내부가 아닌 경우 (배경 Dimmer 등)
@@ -257,33 +257,46 @@
                 }
 
                 // 2. 팝업 바디 내부인 경우: 오버스크롤 방지 로직 실행
-                const isScrollingUp =
-                    e.deltaY < 0 ||
-                    (e.touches &&
-                        e.touches[0].clientY >
-                            (e.touches[1]
-                                ? e.touches[1].clientY
-                                : e.touches[0].clientY));
 
-                // 스크롤이 맨 위에 닿았고, 위로 더 스크롤하려 할 때
-                if (scrollablePopupBody.scrollTop === 0 && isScrollingUp) {
-                    e.preventDefault();
-                }
-                // 스크롤이 맨 아래에 닿았고, 아래로 더 스크롤하려 할 때
-                else if (
-                    scrollablePopupBody.scrollHeight -
-                        scrollablePopupBody.clientHeight <=
-                        scrollablePopupBody.scrollTop &&
-                    !isScrollingUp
-                ) {
-                    e.preventDefault();
+                // 터치 시작 시점 (touchstart)의 좌표를 기록합니다.
+                if (e.type === "touchstart") {
+                    lastTouchY = e.touches[0].clientY;
+                    return;
                 }
 
-                // 주의: touchmove의 기본 동작 자체는 팝업 내부 스크롤을 위해 막지 않음
-                // 오버스크롤 시에만 preventDefault()를 호출하여 배경 스크롤을 막습니다.
+                // touchmove 이벤트에서 스크롤 방향을 판단합니다.
+                if (e.type === "touchmove") {
+                    const currentTouchY = e.touches[0].clientY;
+                    const scrollDelta = currentTouchY - lastTouchY; // 양수: 아래로 이동 (위로 스크롤), 음수: 위로 이동 (아래로 스크롤)
+                    const isScrollingUp = scrollDelta > 0; // 스크롤바가 위로 이동하는 것 (컨텐츠를 아래로 당기는 행위)
+
+                    // 팝업 내부 스크롤이 맨 위에 닿았고, 위로 더 당기려 할 때
+                    if (scrollablePopupBody.scrollTop === 0 && isScrollingUp) {
+                        e.preventDefault();
+                        return;
+                    }
+                    // 팝업 내부 스크롤이 맨 아래에 닿았고, 아래로 더 밀어내려 할 때
+                    else if (
+                        scrollablePopupBody.scrollHeight -
+                            scrollablePopupBody.clientHeight <=
+                            scrollablePopupBody.scrollTop &&
+                        !isScrollingUp
+                    ) {
+                        e.preventDefault();
+                        return;
+                    }
+                    // 스크롤이 진행 중인 경우, 배경 스크롤 전파를 막기 위해
+                    // iOS에서는 이 지점에서 `e.preventDefault()`가 오버스크롤을 막지만,
+                    // Android에서는 팝업 내부 스크롤을 위해 `preventDefault`를 호출하지 않아야 합니다.
+
+                    // Android 오버스크롤 전파를 막기 위해,
+                    // 팝업 바디 내부에서는 `preventDefault`를 호출하지 않고 **스크롤바 시작/끝에 닿았을 때만 호출**하도록 로직을 유지합니다.
+
+                    lastTouchY = currentTouchY; // 마지막 좌표 업데이트
+                }
+
+                // (wheel 이벤트가 필요한 경우를 위해 deltaY 로직을 추가할 수 있으나, 모바일에 집중하여 touchmove로 충분)
             }
-
-            // 이 로직은 touchmove 뿐만 아니라 wheel 이벤트(PC 테스트)에도 대응하기 위해 document에 passive: false로 등록됩니다.
 
             /**
              * 팝업을 여는 함수
@@ -295,7 +308,10 @@
                 document.body.classList.add("no-scroll");
 
                 // 2. touchmove 이벤트 차단 및 내부 스크롤 허용 로직
-                // Document 전체에 걸어 모든 터치를 막고, preventScroll에서 팝업 바디의 정상 스크롤은 허용합니다.
+                // touchstart 이벤트도 추가하여 좌표를 기록합니다.
+                document.addEventListener("touchstart", preventScroll, {
+                    passive: false,
+                });
                 document.addEventListener("touchmove", preventScroll, {
                     passive: false,
                 });
@@ -310,7 +326,7 @@
                     currentPopupId = "modal";
                 }
 
-                // ⚠️ 키보드가 처음 뜰 때 팝업 위치를 바로 잡기 위해 즉시 호출
+                // 키보드 위치를 바로 잡기 위해 즉시 호출
                 handleViewportChange();
             }
 
@@ -339,7 +355,11 @@
                         document.body.style.top = "";
                         window.scrollTo(0, savedScrollY);
 
-                        // touchmove 이벤트 차단 해제
+                        // touch 이벤트 차단 해제
+                        document.removeEventListener(
+                            "touchstart",
+                            preventScroll
+                        );
                         document.removeEventListener(
                             "touchmove",
                             preventScroll
@@ -348,23 +368,16 @@
                 }, 300);
             }
 
-            /**
-             * Dimmer 클릭 시 호출되는 함수 (외부 클릭으로 닫기)
-             */
+            // (이하 closeAllPopups, resetPopup, handleViewportChange, 이벤트 리스너 등록 로직은 동일)
+
             function closeAllPopups() {
                 if (currentPopupId) {
-                    // 이벤트 타겟이 Dimmer 그 자체인지 확인하여 팝업 내부 클릭 방지
                     if (event.target.id === "app-dimmer") {
                         closePopup(currentPopupId);
                     }
                 }
             }
 
-            // (이하 resetPopup, handleViewportChange, 이벤트 리스너 등록 로직은 동일)
-
-            /**
-             * 팝업 스타일을 초기 상태로 되돌리는 함수
-             */
             function resetPopup(popupElement, type) {
                 if (type === "bottom") {
                     popupElement.style.maxHeight = "";
@@ -378,9 +391,6 @@
                 }
             }
 
-            /**
-             * VisualViewport 변경 시 호출되는 메인 핸들러 (키보드 감지 및 여백 적용 로직)
-             */
             function handleViewportChange() {
                 const vv = window.visualViewport;
                 const layoutHeight = window.innerHeight;
@@ -394,11 +404,9 @@
                     bottomPopup.classList.contains("active")
                 ) {
                     if (isKeyboardVisible) {
-                        // 키보드가 올라왔을 때 (키보드 위에 붙임)
                         const newTop = vv.offsetTop;
                         const newMaxHeight = vv.height;
 
-                        // 120px 여백 처리
                         const finalTop = Math.max(
                             newTop,
                             BOTTOM_POPUP_MARGIN_TOP
@@ -413,7 +421,6 @@
                         bottomPopup.style.bottom = "auto";
                         bottomPopup.style.transform = "translateY(0)";
                     } else {
-                        // 키보드가 닫혔을 때
                         bottomPopup.style.maxHeight = "";
                         bottomPopup.style.top = "auto";
                         bottomPopup.style.bottom = "0";
@@ -427,15 +434,13 @@
                     modalPopup.classList.contains("active")
                 ) {
                     if (isKeyboardVisible) {
-                        // 키보드가 올라왔을 때
-                        const newMaxHeight = vv.height - MODAL_MARGIN * 2; // 상하 64px 여백 제외
-                        const newTop = vv.offsetTop + MODAL_MARGIN; // 상단 64px 여백
+                        const newMaxHeight = vv.height - MODAL_MARGIN * 2;
+                        const newTop = vv.offsetTop + MODAL_MARGIN;
 
                         modalPopup.style.maxHeight = `${newMaxHeight}px`;
                         modalPopup.style.top = `${newTop}px`;
                         modalPopup.style.transform = `translateX(-50%)`;
                     } else {
-                        // 키보드가 닫혔을 때 (원래 중앙 위치로 복원)
                         modalPopup.style.maxHeight = "";
                         modalPopup.style.top = "50%";
                         modalPopup.style.transform = "translate(-50%, -50%)";
