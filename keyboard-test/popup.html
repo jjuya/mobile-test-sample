@@ -164,7 +164,7 @@
         <div
             id="app-dimmer"
             class="dimmer"
-            onclick="closeAllPopups(event)"
+            onclick="closePopup(currentPopupId)"
         ></div>
 
         <div id="bottom-slide-popup" class="popup bottom-slide-popup">
@@ -220,36 +220,35 @@
         </div>
 
         <script>
-            /* ---------------------------------------------------- */
-            /* --- JavaScript 로직 (최종 스크롤/키보드 대응) --- */
-            /* ---------------------------------------------------- */
+            /* --- JavaScript 로직 시작 (최종 팝업 닫기 버그 수정) --- */
 
-            // 팝업 여백 설정 값
-            const BOTTOM_POPUP_MARGIN_TOP = 120; // 하단 팝업 상단 여백 (px)
-            const MODAL_MARGIN = 64; // 모달 팝업 상하단 여백 (px)
+            // (기존 변수 선언 및 설정은 동일)
+            const BOTTOM_POPUP_MARGIN_TOP = 120;
+            const MODAL_MARGIN = 64;
 
             let currentPopupId = null;
-            let savedScrollY = 0; // 배경 스크롤 위치 저장
-            let lastTouchY = 0; // 터치 방향 감지를 위한 변수
+            let savedScrollY = 0;
+            let lastTouchY = 0;
 
             const dimmer = document.getElementById("app-dimmer");
             const bottomPopup = document.getElementById("bottom-slide-popup");
             const modalPopup = document.getElementById("modal-popup");
 
+            // preventScroll 함수는 이전과 동일하게 유지
+
             /**
-             * 팝업 내부 스크롤 허용 및 배경 스크롤/오버스크롤 차단 로직
+             * 팝업 내부 스크롤 허용 및 배경 스크롤/오버스크롤 차단 로직 (이전과 동일)
+             * ...
              */
             function preventScroll(e) {
+                // (preventScroll 함수 내용 생략 - 이전과 동일)
                 const target = e.target;
                 const scrollablePopupBody = target.closest(".popup-body");
 
-                // 1. 팝업 바디 외부(배경, 헤더 등) 터치 시: 스크롤 강제 차단
                 if (!scrollablePopupBody) {
                     e.preventDefault();
                     return;
                 }
-
-                // 2. 팝업 바디 내부 터치 시: 오버스크롤(스크롤 전파)만 차단
 
                 if (e.type === "touchstart") {
                     lastTouchY = e.touches[0].clientY;
@@ -259,14 +258,12 @@
                 if (e.type === "touchmove") {
                     const currentTouchY = e.touches[0].clientY;
                     const scrollDelta = currentTouchY - lastTouchY;
-                    const isScrollingUp = scrollDelta > 0; // 아래로 당기는(위로 스크롤) 행위
+                    const isScrollingUp = scrollDelta > 0;
 
-                    // 스크롤이 맨 위이고 위로 더 당기려 할 때 (오버스크롤)
                     if (scrollablePopupBody.scrollTop <= 0 && isScrollingUp) {
                         e.preventDefault();
                         return;
                     }
-                    // 스크롤이 맨 아래이고 아래로 더 밀어내려 할 때 (오버스크롤)
                     const isAtBottom =
                         scrollablePopupBody.scrollHeight -
                             scrollablePopupBody.clientHeight -
@@ -281,16 +278,13 @@
                 }
             }
 
-            /**
-             * 팝업 열기: 배경 스크롤 방지 및 이벤트 리스너 등록
-             */
+            // openPopup 함수는 이전과 동일하게 유지
+
             function openPopup(type) {
-                // 배경 스크롤 고정
                 savedScrollY = window.scrollY;
                 document.body.style.top = `-${savedScrollY}px`;
                 document.body.classList.add("no-scroll");
 
-                // 오버스크롤 방지를 위한 터치 이벤트 리스너 등록
                 document.addEventListener("touchstart", preventScroll, {
                     passive: false,
                 });
@@ -298,7 +292,6 @@
                     passive: false,
                 });
 
-                // 팝업 활성화
                 dimmer.classList.add("active");
                 if (type === "bottom") {
                     bottomPopup.classList.add("active");
@@ -308,14 +301,17 @@
                     currentPopupId = "modal";
                 }
 
-                // 키보드 위치를 즉시 계산 및 적용 (iOS 초기 위치 버그 방지)
                 handleViewportChange();
             }
 
             /**
-             * 팝업 닫기: 배경 스크롤 복구 및 이벤트 리스너 제거
+             * 팝업 닫기: Dimmer 비활성화 타이밍을 늦춰 닫기 동작의 안정성 확보
+             * @param {'bottom' | 'modal' | null} type
              */
             function closePopup(type) {
+                if (!type) return; // currentPopupId가 null인 경우 안전하게 종료
+
+                // 1. 팝업 비활성화 (CSS 트랜지션 시작)
                 if (type === "bottom") {
                     bottomPopup.classList.remove("active");
                     resetPopup(bottomPopup, "bottom");
@@ -324,8 +320,9 @@
                     resetPopup(modalPopup, "modal");
                 }
 
+                // 2. Dimmer/배경 복구 타이밍 지연 (팝업 닫힘 트랜지션 0.3s + 안전 마진)
                 setTimeout(() => {
-                    // 모든 팝업이 닫혔을 때만 배경 복구
+                    // 다른 팝업이 활성화되어 있지 않은 경우에만 복구 실행
                     if (
                         !bottomPopup.classList.contains("active") &&
                         !modalPopup.classList.contains("active")
@@ -348,38 +345,36 @@
                             preventScroll
                         );
                     }
-                }, 300);
+                }, 500); // ⚠️ 타이밍을 500ms로 늘림
             }
 
             /**
-             * Dimmer 클릭 시 팝업 닫기 (클릭 타겟이 Dimmer 자체인지 확인)
+             * Dimmer 클릭 시 팝업 닫기 (HTML에서 currentPopupId를 직접 전달하도록 변경했으므로, 이 함수는 사용하지 않음)
+             * 다만, 혹시 모를 재사용을 위해 로직은 주석 처리합니다.
              */
-            function closeAllPopups(event) {
-                // Dimmer 자체를 클릭했을 경우에만 닫기 실행
-                if (currentPopupId && event.target.id === "app-dimmer") {
-                    closePopup(currentPopupId);
-                }
-            }
+            /*
+    function closeAllPopups(event) {
+        if (currentPopupId && event.target.id === "app-dimmer") { 
+            closePopup(currentPopupId);
+        }
+    }
+    */
 
-            /**
-             * 팝업 스타일을 기본 상태로 초기화
-             */
+            // (resetPopup, handleViewportChange 함수는 이전과 동일하게 유지)
+
             function resetPopup(popupElement, type) {
                 if (type === "bottom") {
                     popupElement.style.maxHeight = "";
                     popupElement.style.top = "auto";
-                    popupElement.style.bottom = "0"; // 하단에 붙이기
+                    popupElement.style.bottom = "0";
                     popupElement.style.transform = "";
                 } else if (type === "modal") {
                     popupElement.style.maxHeight = "";
-                    popupElement.style.top = "50%"; // 중앙으로 복원
+                    popupElement.style.top = "50%";
                     popupElement.style.transform = "translate(-50%, -50%)";
                 }
             }
 
-            /**
-             * VisualViewport 변경 핸들러 (키보드 등장/퇴장 시 팝업 위치 및 크기 조정)
-             */
             function handleViewportChange() {
                 const vv = window.visualViewport;
                 const layoutHeight = window.innerHeight;
@@ -387,21 +382,16 @@
 
                 if (!currentPopupId) return;
 
-                // 1. 하단 팝업 처리 (상단 120px 여백 및 키보드 대응)
                 if (
                     currentPopupId === "bottom" &&
                     bottomPopup.classList.contains("active")
                 ) {
                     if (isKeyboardVisible) {
                         const vvTop = vv.offsetTop;
-
-                        // 팝업 상단 위치: 키보드 상단(vvTop)과 120px 여백 중 더 아래쪽
                         const targetTop = Math.max(
                             vvTop,
                             BOTTOM_POPUP_MARGIN_TOP
                         );
-
-                        // 최대 높이 계산
                         const targetMaxHeight = vv.height - (targetTop - vvTop);
                         const finalMaxHeight = Math.min(
                             targetMaxHeight,
@@ -413,30 +403,23 @@
                         bottomPopup.style.bottom = "auto";
                         bottomPopup.style.transform = "translateY(0)";
                     } else {
-                        // 키보드 닫혔을 때는 기본값으로 복원
                         bottomPopup.style.maxHeight = "";
                         bottomPopup.style.top = "auto";
                         bottomPopup.style.bottom = "0";
                         bottomPopup.style.transform = "";
                     }
-                }
-
-                // 2. 모달 팝업 처리 (상하 64px 여백 및 키보드 대응)
-                else if (
+                } else if (
                     currentPopupId === "modal" &&
                     modalPopup.classList.contains("active")
                 ) {
                     if (isKeyboardVisible) {
-                        // 상하 64px 여백을 제외한 최대 높이 계산
                         const newMaxHeight = vv.height - MODAL_MARGIN * 2;
-                        // 상단 64px 여백을 확보한 위치
                         const newTop = vv.offsetTop + MODAL_MARGIN;
 
                         modalPopup.style.maxHeight = `${newMaxHeight}px`;
                         modalPopup.style.top = `${newTop}px`;
                         modalPopup.style.transform = `translateX(-50%)`;
                     } else {
-                        // 키보드 닫혔을 때 중앙으로 복원
                         modalPopup.style.maxHeight = "";
                         modalPopup.style.top = "50%";
                         modalPopup.style.transform = "translate(-50%, -50%)";
@@ -459,6 +442,7 @@
                     "VisualViewport API를 지원하지 않는 브라우저입니다."
                 );
             }
+            /* --- JavaScript 로직 끝 --- */
         </script>
     </body>
 </html>
