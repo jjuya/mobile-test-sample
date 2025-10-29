@@ -3,14 +3,13 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>VisualViewport Fixed Bottom Test</title>
+        <title>VisualViewport Fixed Optimized Test</title>
         <style>
             /* 1. 기본 스타일 및 Fixed 요소 스타일 */
             body {
                 margin: 0;
                 padding: 0;
-                /* body의 높이를 충분히 확보하여 스크롤이 발생하도록 합니다. */
-                min-height: 200vh;
+                min-height: 200vh; /* 스크롤 확보 */
                 background-color: #f4f4f4;
             }
 
@@ -26,24 +25,24 @@
                 text-align: center;
                 line-height: 50px;
                 font-weight: bold;
-                z-index: 999; /* 항상 최상위에 위치 */
+                z-index: 999;
             }
 
             /* 2. 콘텐츠 래퍼 스타일 (핵심 요소) */
             #viewportwrap {
-                position: absolute; /* Fixed 요소와 겹치지 않도록 absolute 사용 */
+                position: absolute;
                 top: 0;
                 left: 0;
                 width: 100%;
-                height: 100%; /* 초기 높이는 100% */
+                height: 100%; /* 초기 높이 */
                 background-color: white;
-                /* JavaScript가 키보드 ON 시 이 영역의 height를 visualViewport.height로 변경하고,
-               스크롤 시 transform: translateY를 적용합니다. */
-                will-change: transform; /* 성능 최적화 */
-                transition: transform 0s; /* 부드러운 움직임을 위해 필요할 수 있지만, 여기서는 0s로 설정하여 즉각 반응 */
+
+                /* ✨ GPU 가속 유도 및 최적화 */
+                will-change: transform;
+                /* transition은 버벅임을 유발할 수 있어 0s로 유지하거나 제거 */
             }
 
-            /* 3. 콘텐츠 스타일 (스크롤 확인용) */
+            /* 3. 콘텐츠 스타일 */
             .content-area {
                 padding: 20px;
             }
@@ -56,18 +55,10 @@
     <body>
         <div id="viewportwrap">
             <div class="content-area">
-                <h1>웹뷰 Fixed 요소 테스트</h1>
+                <h1>웹뷰 Fixed 요소 테스트 (최적화)</h1>
                 <p>
-                    이 페이지는 모바일 웹뷰에서 가상 키보드가 열렸을 때
-                    position: fixed; bottom: 0; 요소가 정상적으로 동작하도록
-                    VisualViewport API를 사용하여 구현한 예시입니다.
-                </p>
-
-                <h2>스크롤을 위한 긴 콘텐츠 영역</h2>
-                <p>스크롤을 내려서 콘텐츠를 확인해보세요.</p>
-                <p>
-                    키보드가 올라오면 하단 Fixed 메뉴가 키보드 위에 위치해야
-                    합니다.
+                    이 코드는 **requestAnimationFrame**을 사용하여 스크롤
+                    버벅임을 개선했습니다. 키보드를 열고 스크롤해보세요.
                 </p>
 
                 <input
@@ -76,31 +67,30 @@
                     style="width: 90%; padding: 10px; margin: 50px 0"
                 />
 
-                <h2>Additional Content 1</h2>
+                <h2>스크롤을 위한 긴 콘텐츠</h2>
                 <p>
                     Lorem ipsum dolor sit amet, consectetur adipiscing elit. ...
                 </p>
-                <h2>Additional Content 2</h2>
+                <p style="height: 100px"></p>
                 <p>
                     Sed do eiusmod tempor incididunt ut labore et dolore magna
                     aliqua. ...
                 </p>
-                <h2>Additional Content 3</h2>
+                <p style="height: 100px"></p>
                 <p>
                     Ut enim ad minim veniam, quis nostrud exercitation ullamco
                     laboris. ...
                 </p>
-                <h2>Additional Content 4</h2>
+                <p style="height: 100px"></p>
                 <p>
                     Duis aute irure dolor in reprehenderit in voluptate velit
                     esse cillum. ...
                 </p>
-                <h2>Additional Content 5</h2>
+                <p style="height: 100px"></p>
                 <p>
                     Excepteur sint occaecat cupidatat non proident, sunt in
                     culpa qui officia. ...
                 </p>
-
                 <p style="height: 400px"></p>
                 <p>스크롤 끝 부분</p>
             </div>
@@ -111,17 +101,16 @@
         </div>
 
         <script>
-            // 🚩 DOM 요소
+            // DOM 요소
             const viewportwrap = document.getElementById("viewportwrap");
 
-            // --- 1. OS 체크 함수 (간단 예시) ---
+            // --- 1. OS 체크 함수 ---
             function checkOS() {
                 const userAgent =
                     navigator.userAgent || navigator.vendor || window.opera;
                 if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) {
                     return "iOS";
                 }
-                // Android Chrome을 특정하여 처리하는 것이 블로그의 결론이었습니다.
                 if (/android/i.test(userAgent) && /chrome/i.test(userAgent)) {
                     return "AndroidChrome";
                 }
@@ -131,39 +120,63 @@
             const currentOS = checkOS();
             console.log(`Current OS detected: ${currentOS}`);
 
-            // --- 2. 플랫폼별 스크롤 핸들러 ---
+            // --- 2. 최적화 변수 및 공통 업데이트 로직 ---
+            let isTicking = false; // rAF 쓰로틀링 플래그
+            let lastScrollY = 0; // iOS window.scrollY 저장
+            let lastViewportScrollY = 0; // Android visualViewport.offsetTop 저장
 
-            // ✅ iOS 환경 스크롤 핸들러 (Window Scroll + 가상 영역 방지)
-            function handleWindowScroll_iOS() {
-                // window.scrollY와 visualViewport의 차이를 활용하여 translateY 값 계산
-                let viewportTopGap = parseInt(
-                    visualViewport.pageTop - visualViewport.offsetTop
-                );
-                let translateY = parseInt(window.scrollY - viewportTopGap);
+            /**
+             * rAF를 통해 브라우저의 다음 프레임에 맞춰 위치를 업데이트합니다.
+             */
+            function updateViewportPosition() {
+                isTicking = false;
 
-                // 스크롤에 따라 viewportwrap 이동
-                viewportwrap.style.transform = `translateY(${translateY}px)`;
+                if (currentOS === "iOS") {
+                    // iOS: window scroll 기반 위치 계산
+                    let viewportTopGap =
+                        visualViewport.pageTop - visualViewport.offsetTop;
+                    let translateY = lastScrollY - viewportTopGap;
 
-                // ⛔️ 하단 가상 영역까지 스크롤되는 것을 방지
-                const bodyHeight = document.body.offsetHeight;
-                const viewportH = visualViewport.height;
+                    viewportwrap.style.transform = `translateY(${translateY}px)`;
 
-                if (window.scrollY + viewportH > bodyHeight - 2) {
-                    // 스크롤을 제한하여 가상 영역이 보이지 않도록 함
-                    window.scrollTo(0, bodyHeight - viewportH - 1);
+                    // 가상 영역 스크롤 방지 로직
+                    const bodyHeight = document.body.offsetHeight;
+                    const viewportH = visualViewport.height;
+
+                    if (lastScrollY + viewportH > bodyHeight - 2) {
+                        window.scrollTo(0, bodyHeight - viewportH - 1);
+                    }
+                } else if (currentOS === "AndroidChrome") {
+                    // Android Chrome: visualViewport offsetTop 기반 위치 적용
+                    viewportwrap.style.transform = `translateY(${lastViewportScrollY}px)`;
                 }
             }
 
-            // ✅ Android Chrome 스크롤 핸들러 (VisualViewport Scroll Only)
-            function handleViewportScroll_AndroidChrome(e) {
-                // Android Chrome에서는 visualViewport의 offsetTop만 사용
-                const viewportScrollY = parseInt(e.target.offsetTop);
+            // --- 3. 플랫폼별 스크롤 핸들러 (데이터만 업데이트하고 rAF 예약) ---
 
-                // viewport scroll 값에 따라 viewportwrap 이동
-                viewportwrap.style.transform = `translateY(${viewportScrollY}px)`;
+            // iOS 환경 스크롤 핸들러 (Window Scroll)
+            function handleWindowScroll_iOS() {
+                lastScrollY = window.scrollY;
+
+                // rAF가 실행 중이 아니라면 새로 예약 (쓰로틀링)
+                if (!isTicking) {
+                    window.requestAnimationFrame(updateViewportPosition);
+                    isTicking = true;
+                }
             }
 
-            // --- 3. 메인: 키보드 감지 및 뷰포트 높이 조정 ---
+            // Android Chrome 스크롤 핸들러 (VisualViewport Scroll)
+            function handleViewportScroll_AndroidChrome(e) {
+                lastViewportScrollY = parseInt(e.target.offsetTop);
+
+                // rAF가 실행 중이 아니라면 새로 예약 (쓰로틀링)
+                if (!isTicking) {
+                    window.requestAnimationFrame(updateViewportPosition);
+                    isTicking = true;
+                }
+            }
+
+            // --- 4. 메인: 키보드 감지 및 뷰포트 높이 조정 ---
 
             function viewportResize() {
                 if (!window.visualViewport) return;
@@ -171,28 +184,29 @@
                 const windowInnerHeight = window.innerHeight;
                 const viewportHeight = parseInt(visualViewport.height);
 
-                // 키보드 ON 감지: window.innerHeight > visualViewport.height
-                if (windowInnerHeight > viewportHeight) {
+                const isKeyboardOn = windowInnerHeight > viewportHeight;
+
+                // 이벤트 리스너를 먼저 정리
+                window.removeEventListener("scroll", handleWindowScroll_iOS);
+                visualViewport.removeEventListener(
+                    "scroll",
+                    handleViewportScroll_AndroidChrome
+                );
+                viewportwrap.style.transform = `translateY(0)`; // 초기화
+
+                if (isKeyboardOn) {
                     console.log("Keyboard ON: Adjusting viewportwrap height.");
 
-                    // 뷰포트 높이를 키보드 제외 영역으로 재지정
+                    // 뷰포트 높이 설정
                     viewportwrap.style.height = `${viewportHeight}px`;
 
-                    // 플랫폼에 따라 스크롤 이벤트 등록 (이전에 등록되었을 수 있으므로 해제 후 등록 권장)
+                    // 플랫폼에 따라 스크롤 이벤트 등록
                     if (currentOS === "iOS") {
-                        window.removeEventListener(
-                            "scroll",
-                            handleWindowScroll_iOS
-                        ); // 재등록 방지
                         window.addEventListener(
                             "scroll",
                             handleWindowScroll_iOS
                         );
                     } else if (currentOS === "AndroidChrome") {
-                        visualViewport.removeEventListener(
-                            "scroll",
-                            handleViewportScroll_AndroidChrome
-                        ); // 재등록 방지
                         visualViewport.addEventListener(
                             "scroll",
                             handleViewportScroll_AndroidChrome
@@ -202,29 +216,15 @@
                     // 키보드 OFF
                     console.log("Keyboard OFF: Resetting viewportwrap.");
 
-                    // 원래 높이로 복원 및 transform 초기화
+                    // 원래 높이로 복원
                     viewportwrap.style.height = "100%";
-                    viewportwrap.style.transform = `translateY(0)`;
-
-                    // 플랫폼에 따라 스크롤 이벤트 해제
-                    if (currentOS === "iOS") {
-                        window.removeEventListener(
-                            "scroll",
-                            handleWindowScroll_iOS
-                        );
-                    } else if (currentOS === "AndroidChrome") {
-                        visualViewport.removeEventListener(
-                            "scroll",
-                            handleViewportScroll_AndroidChrome
-                        );
-                    }
                 }
             }
 
-            // 🚀 초기 실행 및 리사이즈 이벤트 리스너 등록
+            // 초기 실행 및 리사이즈 이벤트 리스너 등록
             if (window.visualViewport) {
                 visualViewport.addEventListener("resize", viewportResize);
-                // 페이지 로드 시 초기 상태 확인 및 적용
+                // 페이지 로드 시 초기 상태 확인
                 viewportResize();
             } else {
                 console.warn(
