@@ -196,32 +196,43 @@
 
         <script>
             /* ---------------------------------------------------- */
-            /* --- JavaScript Logic (Final Stable) --- */
+            /* --- JavaScript Logic (Single DOM Element State) --- */
             /* ---------------------------------------------------- */
 
             const BOTTOM_POPUP_MARGIN_TOP = 120;
             const MODAL_MARGIN = 64;
 
-            let currentPopupId = null;
+            // ✅ 상태 관리 변수: 현재 열린 팝업 DOM 요소만 저장
+            let currentPopupElement = null;
+
             let savedScrollY = 0;
             let lastTouchY = 0;
+            let closeTimeoutId = null; // 중복 닫기 방지용 Timeout ID (추가)
 
             const dimmer = document.getElementById("app-dimmer");
             const bottomPopup = document.getElementById("bottom-slide-popup");
             const modalPopup = document.getElementById("modal-popup");
 
-            // ✅ Dimmer 클릭 핸들러 (안정화): Dimmer 자체 ID만 체크
-            dimmer.addEventListener("click", (event) => {
-                if (event.target.id === "app-dimmer" && currentPopupId) {
-                    closePopup(currentPopupId);
-                }
-            });
+            // Dimmer 클릭 핸들러: Dimmer 클릭 + 팝업 내부 클릭 아닐 경우 닫기
+            // (제공해주신 코드 대신, 이전 대화에서 합의된 안정적인 Dimmer 로직으로 복원)
+            const dimmerCloseHandler = (event) => {
+                const clickedOnPopup =
+                    event.target.closest("#bottom-slide-popup") ||
+                    event.target.closest("#modal-popup");
 
-            // preventScroll function (Keeps the popup scrollable, prevents background scroll)
+                // currentPopupElement가 null이 아니며, 팝업 내부를 클릭하지 않았다면 닫기 실행
+                if (currentPopupElement && !clickedOnPopup) {
+                    closePopup(); // ✅ 닫기 요청 시 인자 없이 호출
+                }
+            };
+
+            // Dimmer 리스너는 open/close 시 동적으로 붙였다 떼는 것으로 최종 합의된 로직을 따릅니다.
+            // 전역 리스너는 삭제하고 openPopup에 추가하겠습니다.
+
+            // preventScroll function (내용 변경 없음)
             function preventScroll(e) {
                 const target = e.target;
                 const scrollablePopupBody = target.closest(".popup-body");
-
                 if (!scrollablePopupBody) {
                     e.preventDefault();
                     return;
@@ -255,8 +266,10 @@
                 }
             }
 
-            // openPopup function (Opens popup, sets background scroll lock)
+            // openPopup function: DOM 요소만 저장하고 Dimmer 리스너 추가
             function openPopup(type) {
+                if (currentPopupElement) return;
+
                 savedScrollY = window.scrollY;
                 document.body.style.top = `-${savedScrollY}px`;
                 document.body.classList.add("no-scroll");
@@ -271,78 +284,108 @@
                 dimmer.classList.add("active");
                 if (type === "bottom") {
                     bottomPopup.classList.add("active");
-                    currentPopupId = "bottom";
+                    currentPopupElement = bottomPopup; // ✅ DOM 요소만 저장
                 } else if (type === "modal") {
                     modalPopup.classList.add("active");
-                    currentPopupId = "modal";
+                    currentPopupElement = modalPopup; // ✅ DOM 요소만 저장
                 }
+
+                // ✅ 팝업 열 때 Dimmer 리스너 추가
+                dimmer.addEventListener("click", dimmerCloseHandler);
 
                 handleViewportChange();
             }
 
             /**
-             * closePopup function (Handles both Dimmer and Close Button clicks)
+             * closePopup function: 닫기 버튼/Dimmer 클릭 시 모두 사용, 인자 없음
              */
+            // HTML onclick="closePopup('bottom')"은 그대로 유지하되, 내부에서 인자를 무시합니다.
             function closePopup(type) {
-                // Check validity: The requested type must be the currently open popup
-                if (!type || type !== currentPopupId) return;
+                // type 인자를 받으나, 사용하지 않고 전역 상태를 따릅니다.
+                if (!currentPopupElement) return;
 
-                // Immediately clear the ID to prevent handleViewportChange() from running during closing transition
-                currentPopupId = null;
+                const closingElement = currentPopupElement;
 
-                // Hide popup (start CSS transition)
-                if (type === "bottom") {
-                    bottomPopup.classList.remove("active");
-                    resetPopup(bottomPopup, "bottom");
-                } else if (type === "modal") {
-                    modalPopup.classList.remove("active");
-                    resetPopup(modalPopup, "modal");
-                }
+                // 팝업 요소의 실제 타입을 확인 (resetPopup을 위해 필요)
+                const isBottom =
+                    closingElement.classList.contains("bottom-slide-popup");
+                const elementType = isBottom ? "bottom" : "modal";
 
-                // Dimmer/Background recovery timing (match 0.3s CSS transition)
-                setTimeout(() => {
-                    // Recover Dimmer and background scroll
+                // ✅ 상태 즉시 초기화
+                currentPopupElement = null;
+
+                // 팝업 비활성화
+                closingElement.classList.remove("active");
+                resetPopup(closingElement, elementType);
+
+                cleanUpDimmerAndBackground();
+            }
+
+            /**
+             * Dimmer 및 배경 정리 로직 (중복 호출 방지 및 트랜지션 대기)
+             */
+            function cleanUpDimmerAndBackground() {
+                if (closeTimeoutId) return;
+
+                closeTimeoutId = setTimeout(() => {
+                    // ✅ 팝업 닫힐 때 Dimmer 리스너 제거
+                    dimmer.removeEventListener("click", dimmerCloseHandler);
+
+                    // Dimmer 및 배경 복구
                     dimmer.classList.remove("active");
-
                     document.body.classList.remove("no-scroll");
                     document.body.style.top = "";
                     window.scrollTo(0, savedScrollY);
 
-                    // Remove touch event listeners
+                    // 터치 이벤트 리스너 제거
                     document.removeEventListener("touchstart", preventScroll);
                     document.removeEventListener("touchmove", preventScroll);
+
+                    closeTimeoutId = null;
                 }, 300);
             }
 
-            // resetPopup function (Resets popup styles to initial state)
+            // resetPopup function (내용 변경 없음)
             function resetPopup(popupElement, type) {
-                if (type === "bottom") {
+                // type 인자가 있으면 사용하고, 없으면 클래스를 검사하여 사용
+                const checkType =
+                    type ||
+                    (popupElement.classList.contains("bottom-slide-popup")
+                        ? "bottom"
+                        : "modal");
+
+                if (checkType === "bottom") {
                     popupElement.style.maxHeight = "";
                     popupElement.style.top = "auto";
                     popupElement.style.bottom = "0";
                     popupElement.style.transform = "";
-                } else if (type === "modal") {
+                } else if (checkType === "modal") {
                     popupElement.style.maxHeight = "";
                     popupElement.style.top = "50%";
                     popupElement.style.transform = "translate(-50%, -50%)";
                 }
             }
 
-            // handleViewportChange function (Adjusts popup position based on keyboard visibility)
+            // handleViewportChange function (DOM 요소의 클래스 직접 검사)
             function handleViewportChange() {
                 const vv = window.visualViewport;
                 const layoutHeight = window.innerHeight;
                 const isKeyboardVisible = vv.height < layoutHeight;
 
-                if (!currentPopupId) return;
+                if (!currentPopupElement) return;
+
+                // DOM 요소의 클래스를 직접 확인하여 타입 결정
+                const isBottom =
+                    currentPopupElement.classList.contains(
+                        "bottom-slide-popup"
+                    );
 
                 if (
-                    currentPopupId === "bottom" &&
-                    bottomPopup.classList.contains("active")
+                    isBottom &&
+                    currentPopupElement.classList.contains("active")
                 ) {
                     if (isKeyboardVisible) {
                         const vvTop = vv.offsetTop;
-
                         const targetTop = Math.max(
                             vvTop,
                             BOTTOM_POPUP_MARGIN_TOP
@@ -353,31 +396,34 @@
                             layoutHeight - BOTTOM_POPUP_MARGIN_TOP
                         );
 
-                        bottomPopup.style.maxHeight = `${finalMaxHeight}px`;
-                        bottomPopup.style.top = `${targetTop}px`;
-                        bottomPopup.style.bottom = "auto";
-                        bottomPopup.style.transform = "translateY(0)";
+                        currentPopupElement.style.maxHeight = `${finalMaxHeight}px`;
+                        currentPopupElement.style.top = `${targetTop}px`;
+                        currentPopupElement.style.bottom = "auto";
+                        currentPopupElement.style.transform = "translateY(0)";
                     } else {
-                        bottomPopup.style.maxHeight = "";
-                        bottomPopup.style.top = "auto";
-                        bottomPopup.style.bottom = "0";
-                        bottomPopup.style.transform = "";
+                        currentPopupElement.style.maxHeight = "";
+                        currentPopupElement.style.top = "auto";
+                        currentPopupElement.style.bottom = "0";
+                        currentPopupElement.style.transform = "";
                     }
-                } else if (
-                    currentPopupId === "modal" &&
-                    modalPopup.classList.contains("active")
+                }
+                // 모달 팝업인 경우
+                else if (
+                    !isBottom &&
+                    currentPopupElement.classList.contains("active")
                 ) {
                     if (isKeyboardVisible) {
                         const newMaxHeight = vv.height - MODAL_MARGIN * 2;
                         const newTop = vv.offsetTop + MODAL_MARGIN;
 
-                        modalPopup.style.maxHeight = `${newMaxHeight}px`;
-                        modalPopup.style.top = `${newTop}px`;
-                        modalPopup.style.transform = `translateX(-50%)`;
+                        currentPopupElement.style.maxHeight = `${newMaxHeight}px`;
+                        currentPopupElement.style.top = `${newTop}px`;
+                        currentPopupElement.style.transform = `translateX(-50%)`;
                     } else {
-                        modalPopup.style.maxHeight = "";
-                        modalPopup.style.top = "50%";
-                        modalPopup.style.transform = "translate(-50%, -50%)";
+                        currentPopupElement.style.maxHeight = "";
+                        currentPopupElement.style.top = "50%";
+                        currentPopupElement.style.transform =
+                            "translate(-50%, -50%)";
                     }
                 }
             }
