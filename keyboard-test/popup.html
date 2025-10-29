@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="ko">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Mobile Keyboard Popup Adjustment</title>
+
+        <style>
+            /* --- CSS 스타일 시작 --- */
+            body {
+                margin: 0;
+                font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+                background-color: #f0f2f5;
+                color: #333;
+                padding-bottom: 20px;
+            }
+
+            .content {
+                padding: 20px;
+            }
+
+            /* 버튼 기본 스타일 */
+            button {
+                padding: 10px 15px;
+                border: none;
+                border-radius: 8px;
+                background-color: #007bff;
+                color: white;
+                font-size: 16px;
+                cursor: pointer;
+                transition: background-color 0.2s;
+                margin-right: 10px;
+            }
+            button:hover {
+                background-color: #0056b3;
+            }
+
+            /* ----------------------------------- */
+            /* --- Dimmer (배경 처리) 스타일 --- */
+            /* ----------------------------------- */
+            .dimmer {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0, 0, 0, 0.5);
+                z-index: 999;
+                display: none;
+                backdrop-filter: blur(3px);
+                -webkit-backdrop-filter: blur(3px);
+                opacity: 0;
+                transition: opacity 0.3s ease;
+            }
+            .dimmer.active {
+                opacity: 1;
+            }
+
+            /* --- 팝업 공통 스타일 --- */
+            .popup {
+                position: fixed;
+                z-index: 1000;
+                background: white;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+                transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                    max-height 0.3s ease, opacity 0.3s ease;
+                display: flex;
+                flex-direction: column;
+                border-radius: 12px;
+                overflow: hidden;
+            }
+
+            .popup-header {
+                padding: 18px 20px;
+                background: #f8f9fa;
+                font-size: 18px;
+                font-weight: bold;
+                border-bottom: 1px solid #eee;
+                flex-shrink: 0;
+            }
+
+            .popup-footer {
+                padding: 15px 20px;
+                background: white;
+                border-top: 1px solid #eee;
+                text-align: right;
+                flex-shrink: 0;
+            }
+            .popup-footer button {
+                background-color: #6c757d;
+            }
+
+            .popup-body {
+                padding: 20px;
+                overflow-y: auto;
+                flex-grow: 1;
+            }
+
+            /* 입력 필드 디자인 */
+            input[type="text"] {
+                width: 100%;
+                padding: 12px;
+                margin-bottom: 15px;
+                box-sizing: border-box;
+                border: 1px solid #ced4da;
+                border-radius: 8px;
+                transition: border-color 0.2s, box-shadow 0.2s;
+            }
+            input[type="text"]:focus {
+                outline: none;
+                border-color: #007bff;
+                box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+            }
+
+            /* --- 1. 하단 슬라이드 팝업 전용 스타일 --- */
+            .bottom-slide-popup {
+                bottom: 0;
+                left: 0;
+                right: 0;
+                width: 100%;
+                height: 60vh;
+                border-radius: 12px 12px 0 0;
+                transform: translateY(100%);
+            }
+            .bottom-slide-popup.active {
+                transform: translateY(0);
+            }
+
+            /* --- 2. 모달 팝업 전용 스타일 --- */
+            .modal-popup {
+                top: 50%;
+                left: 50%;
+                width: 90%;
+                max-width: 400px;
+                height: 80vh;
+                transform: translate(-50%, -50%) scale(0.9);
+                opacity: 0;
+            }
+            .modal-popup.active {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 1;
+            }
+            /* --- CSS 스타일 끝 --- */
+        </style>
+    </head>
+    <body>
+        <div class="content">
+            <h1>✨ 팝업/모달 키보드 대응</h1>
+            <p>배경(Dimmer)을 클릭하면 팝업이 닫힙니다.</p>
+            <button onclick="openPopup('bottom')">하단 팝업 열기</button>
+            <button onclick="openPopup('modal')">모달 팝업 열기</button>
+            <input
+                type="text"
+                placeholder="일반 입력 테스트"
+                style="margin-top: 20px"
+            />
+        </div>
+
+        <div id="app-dimmer" class="dimmer" onclick="closeAllPopups()"></div>
+
+        <div id="bottom-slide-popup" class="popup bottom-slide-popup">
+            <div class="popup-header">하단 슬라이드 팝업</div>
+            <div class="popup-body">
+                <input
+                    type="text"
+                    placeholder="여기에 입력하세요 (키보드 유도)"
+                />
+                <p>
+                    <strong>[하단 팝업 동작]</strong> 키보드가 올라오면, 팝업은
+                    높이가 줄어들고 키보드 바로 위로 애니메이션되어 붙습니다. 이
+                    영역 외 클릭 시 닫힙니다.
+                </p>
+            </div>
+            <div class="popup-footer">
+                <button onclick="closePopup('bottom')">닫기</button>
+            </div>
+        </div>
+
+        <div id="modal-popup" class="popup modal-popup">
+            <div class="popup-header">모달 팝업</div>
+            <div class="popup-body">
+                <input
+                    type="text"
+                    placeholder="여기에 입력하세요 (키보드 유도)"
+                />
+                <p>
+                    <strong>[모달 팝업 동작]</strong> 키보드가 올라오면, 모달의
+                    최대 높이가 줄어들어 키보드에 가려지지 않고 화면 가시 영역
+                    내에 표시됩니다. 이 영역 외 클릭 시 닫힙니다.
+                </p>
+                <p>스크롤 테스트용 내용...</p>
+                <p>...</p>
+                <p>...</p>
+                <p>...</p>
+                <p>...</p>
+            </div>
+            <div class="popup-footer">
+                <button onclick="closePopup('modal')">닫기</button>
+            </div>
+        </div>
+
+        <script>
+            /* --- JavaScript 로직 시작 --- */
+            let currentPopupId = null;
+            const dimmer = document.getElementById("app-dimmer");
+            const bottomPopup = document.getElementById("bottom-slide-popup");
+            const modalPopup = document.getElementById("modal-popup");
+
+            /**
+             * 팝업을 여는 함수
+             */
+            function openPopup(type) {
+                dimmer.style.display = "block";
+                setTimeout(() => {
+                    dimmer.classList.add("active");
+                }, 10);
+
+                if (type === "bottom") {
+                    bottomPopup.classList.add("active");
+                    currentPopupId = "bottom";
+                } else if (type === "modal") {
+                    modalPopup.classList.add("active");
+                    currentPopupId = "modal";
+                }
+                handleViewportChange();
+            }
+
+            /**
+             * 팝업을 닫는 함수
+             */
+            function closePopup(type) {
+                if (type === "bottom") {
+                    bottomPopup.classList.remove("active");
+                    resetPopup(bottomPopup, "bottom");
+                } else if (type === "modal") {
+                    modalPopup.classList.remove("active");
+                    resetPopup(modalPopup, "modal");
+                }
+
+                // 모든 팝업이 닫혔는지 확인 후 Dimmer 제거
+                setTimeout(() => {
+                    if (
+                        !bottomPopup.classList.contains("active") &&
+                        !modalPopup.classList.contains("active")
+                    ) {
+                        dimmer.classList.remove("active");
+                        dimmer.style.display = "none"; // 애니메이션 후 display none
+                        currentPopupId = null; // 모든 팝업 닫힘 상태
+                    }
+                }, 300); // CSS transition 시간(0.3s)과 맞춤
+            }
+
+            /**
+             * Dimmer 클릭 시 호출되는 함수 (외부 클릭으로 닫기)
+             */
+            function closeAllPopups() {
+                // 현재 열려있는 팝업을 확인하여 닫음
+                if (currentPopupId) {
+                    closePopup(currentPopupId);
+                }
+            }
+
+            /**
+             * 팝업 스타일을 초기 상태로 되돌리는 함수
+             */
+            function resetPopup(popupElement, type) {
+                if (type === "bottom") {
+                    popupElement.style.maxHeight = "";
+                    // .active 클래스가 transform: translateY(0)을 처리, 키보드 닫힐 때 transform은 초기화되어야 함
+                    popupElement.style.transform = "";
+                } else if (type === "modal") {
+                    popupElement.style.maxHeight = "";
+                }
+            }
+
+            /**
+             * VisualViewport 변경 시 호출되는 메인 핸들러 (키보드 감지 로직)
+             */
+            function handleViewportChange() {
+                const vv = window.visualViewport;
+                const layoutHeight = window.innerHeight;
+
+                const isKeyboardVisible = vv.height < layoutHeight;
+                const keyboardHeight = layoutHeight - vv.height;
+
+                if (!currentPopupId) return;
+
+                if (
+                    currentPopupId === "bottom" &&
+                    bottomPopup.classList.contains("active")
+                ) {
+                    if (isKeyboardVisible) {
+                        // 키보드 위에 붙임
+                        bottomPopup.style.maxHeight = `${vv.height}px`;
+                        bottomPopup.style.transform = `translateY(-${keyboardHeight}px)`;
+                    } else {
+                        // 키보드 닫힘: 기본 transform으로 복구
+                        bottomPopup.style.maxHeight = "";
+                        bottomPopup.style.transform = "";
+                    }
+                } else if (
+                    currentPopupId === "modal" &&
+                    modalPopup.classList.contains("active")
+                ) {
+                    if (isKeyboardVisible) {
+                        // 모달 팝업: 높이 제한
+                        modalPopup.style.maxHeight = `${vv.height}px`;
+                    } else {
+                        // 키보드 닫힘
+                        modalPopup.style.maxHeight = "";
+                    }
+                }
+            }
+
+            // --- 이벤트 리스너 등록 ---
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener(
+                    "resize",
+                    handleViewportChange
+                );
+                window.visualViewport.addEventListener(
+                    "scroll",
+                    handleViewportChange
+                );
+            } else {
+                console.warn(
+                    "VisualViewport API를 지원하지 않는 브라우저입니다."
+                );
+            }
+            /* --- JavaScript 로직 끝 --- */
+        </script>
+    </body>
+</html>
