@@ -230,7 +230,7 @@
         <script>
             /* --- JavaScript 로직 시작 (최종 스크롤 차단 로직 적용) --- */
 
-            const HEADER_MARGIN = 16;
+            const HEADER_MARGIN = 32;
             let currentPopupId = null;
             let savedScrollY = 0; // 배경 스크롤 위치 저장 변수
 
@@ -238,35 +238,40 @@
             const bottomPopup = document.getElementById("bottom-slide-popup");
             const modalPopup = document.getElementById("modal-popup");
 
-            // 팝업이 아닌 영역에서 터치(스크롤) 이벤트를 막는 함수
+            // 팝업 내부의 스크롤을 허용하도록 로직 변경
             function preventScroll(e) {
-                // 이벤트를 비활성화하여 배경 스크롤을 막습니다.
-                e.preventDefault();
+                // 이벤트가 발생한 요소
+                const target = e.target;
+
+                // 타겟 요소가 'popup-body' 클래스를 포함하는 부모 요소 내부에 있는지 확인
+                // 즉, 팝업 내용 영역(스크롤 허용 영역)인지 체크합니다.
+                const isInsideScrollablePopup = target.closest(".popup-body");
+
+                // 팝업 바디 내부가 아닌 경우 (즉, 배경 Dimmer나 스크롤되면 안되는 영역인 경우)에만 preventDefault() 실행
+                if (!isInsideScrollablePopup) {
+                    e.preventDefault();
+                    return false;
+                }
             }
 
             /**
              * 팝업을 여는 함수
              */
             function openPopup(type) {
-                // 1. 배경 스크롤 방지 로직 시작
-                savedScrollY = window.scrollY; // 현재 스크롤 위치 저장
-
-                // body를 fixed로 만들고, 스크롤 위치를 유지
+                // 1. 배경 스크롤 방지 로직 (fixed 포지션)
+                savedScrollY = window.scrollY;
                 document.body.style.top = `-${savedScrollY}px`;
                 document.body.classList.add("no-scroll");
 
-                // touchmove 이벤트 차단 (iOS 오버스크롤 방지)
-                dimmer.addEventListener("touchmove", preventScroll, {
+                // 2. touchmove 이벤트 차단 (이제 Dimmer가 아니라 Document 전체에 걸고, 내부에서 예외 처리)
+                // Document 전체에 걸어 모든 배경 터치를 막고, preventScroll 내부에서 팝업 바디만 허용
+                document.addEventListener("touchmove", preventScroll, {
                     passive: false,
                 });
-                document.body.addEventListener("touchmove", preventScroll, {
-                    passive: false,
-                });
-                // ----------------------------------------
 
-                // 2. Dimmer 및 팝업 활성화
+                // 3. Dimmer 및 팝업 활성화
                 dimmer.classList.add("active");
-
+                // ... (팝업 활성화 로직은 동일)
                 if (type === "bottom") {
                     bottomPopup.classList.add("active");
                     currentPopupId = "bottom";
@@ -298,19 +303,14 @@
                         dimmer.classList.remove("active");
                         currentPopupId = null;
 
-                        // 3. 배경 스크롤 복구 로직 시작
-                        // fixed 포지션 해제 및 스크롤 위치 복원
                         document.body.classList.remove("no-scroll");
                         document.body.style.top = "";
                         window.scrollTo(0, savedScrollY);
 
-                        // touchmove 이벤트 차단 해제
-                        dimmer.removeEventListener("touchmove", preventScroll);
-                        document.body.removeEventListener(
+                        document.removeEventListener(
                             "touchmove",
                             preventScroll
                         );
-                        // ----------------------------------------
                     }
                 }, 300);
             }
