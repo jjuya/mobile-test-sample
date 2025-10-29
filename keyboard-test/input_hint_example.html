@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Input Mode & Enter Key Hint 심화 예제</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f4f4f9;
+        }
+        form {
+            max-width: 400px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .input-group {
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            background-color: #fafafa;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        .hint {
+            font-size: 0.9em;
+            color: #6a6a6a;
+            margin-bottom: 8px;
+        }
+        input {
+            width: 95%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>다양한 입력 모드 및 Enter 키 힌트</h1>
+    <form>
+        
+        <div class="input-group">
+            <label for="email_input">이메일 주소</label>
+            <div class="hint">⌨️: 이메일 키보드, ⏎: 보내기</div>
+            <input 
+                type="text" 
+                id="email_input" 
+                name="email_input" 
+                inputmode="email" 
+                enterkeyhint="send"
+                placeholder="email@example.com"
+            >
+        </div>
+
+        <div class="input-group">
+            <label for="price_input">상품 가격</label>
+            <div class="hint">⌨️: 분수 숫자 키보드 (소수점 포함), ⏎: 완료</div>
+            <input 
+                type="text" 
+                id="price_input" 
+                name="price_input" 
+                inputmode="decimal"
+                enterkeyhint="done"
+                placeholder="123.45"
+            >
+        </div>
+
+        <div class="input-group">
+            <label for="search_input">사이트 검색</label>
+            <div class="hint">⌨️: 표준 텍스트 키보드, ⏎: 검색</div>
+            <input 
+                type="text" 
+                id="search_input" 
+                name="search_input" 
+                inputmode="text"
+                enterkeyhint="search"
+                placeholder="검색어를 입력하세요"
+            >
+        </div>
+        
+        <div class="input-group">
+            <label for="pin_input">6자리 PIN 번호</label>
+            <div class="hint">⌨️: 숫자 키보드 (정수), ⏎: 다음</div>
+            <input 
+                type="text" 
+                id="pin_input" 
+                name="pin_input" 
+                maxlength="6"
+                inputmode="numeric"
+                enterkeyhint="next"
+                placeholder="000000"
+            >
+        </div>
+
+        <div class="input-group">
+            <label for="url_input">웹사이트 주소</label>
+            <div class="hint">⌨️: URL 특화 키보드, ⏎: 이동</div>
+            <input 
+                type="text" 
+                id="url_input" 
+                name="url_input" 
+                inputmode="url"
+                enterkeyhint="go"
+                placeholder="https://www.example.com"
+            >
+        </div>
+        
+    </form>
+</body>
+</html>
