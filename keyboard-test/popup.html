@@ -292,51 +292,58 @@
 
                 if (!currentPopupId) return;
 
-                // 하단 팝업 처리
+                // 1. 하단 팝업 처리 (기존 로직 유지)
                 if (
                     currentPopupId === "bottom" &&
                     bottomPopup.classList.contains("active")
                 ) {
                     if (isKeyboardVisible) {
-                        // 1. 키보드 위에 붙이면서 상단에 16px 여백을 확보하도록 계산
-
-                        // a. 팝업의 새로운 top 위치 계산:
-                        //    VisualViewport의 시작점 (vv.offsetTop) + 원하는 상단 여백 (HEADER_MARGIN)
+                        // 상단 16px 여백을 확보하도록 계산
                         const newTop = vv.offsetTop + HEADER_MARGIN;
-
-                        // b. 팝업의 새로운 최대 높이 계산:
-                        //    VisualViewport 높이 - 상단 여백 (HEADER_MARGIN)
                         const newMaxHeight = vv.height - HEADER_MARGIN;
 
-                        // 팝업 높이 제한 (스크롤 문제 해결)
                         bottomPopup.style.maxHeight = `${newMaxHeight}px`;
-
-                        // 팝업 위치 조정 (키보드 위, 상단 16px 여백 포함)
-                        // 'transform: translateY(...)' 대신 'top'을 사용하여 팝업을 정확한 위치에 고정합니다.
-                        // 기존 CSS의 bottom: 0; transform: translateY(100%);를 무시하고 fixed top으로 전환합니다.
                         bottomPopup.style.top = `${newTop}px`;
                         bottomPopup.style.bottom = "auto";
-                        bottomPopup.style.transform = "translateY(0)"; // 키보드 관련 transform 제거
+                        bottomPopup.style.transform = "translateY(0)";
                     } else {
                         // 키보드 닫힘: 기본 active 상태의 CSS로 복구
                         bottomPopup.style.maxHeight = "";
-                        bottomPopup.style.top = "auto"; // top 제거
-                        bottomPopup.style.bottom = "0"; // bottom: 0 복구
-                        bottomPopup.style.transform = ""; // CSS의 translateY(0) 복구
+                        bottomPopup.style.top = "auto";
+                        bottomPopup.style.bottom = "0";
+                        bottomPopup.style.transform = "";
                     }
                 }
 
-                // 모달 팝업 처리 (기존 로직 유지)
+                // 2. 모달 팝업 처리 (상하 여백 16px 추가)
                 else if (
                     currentPopupId === "modal" &&
                     modalPopup.classList.contains("active")
                 ) {
                     if (isKeyboardVisible) {
-                        // 모달 팝업: 높이 제한
-                        modalPopup.style.maxHeight = `${vv.height}px`;
+                        // a. 팝업의 새로운 최대 높이 계산:
+                        //    VisualViewport 높이 - 상단 여백 (16px) - 하단 여백 (16px)
+                        const newMaxHeight = vv.height - HEADER_MARGIN * 2;
+
+                        // b. 팝업의 새로운 top 위치 계산:
+                        //    VisualViewport 상단 시작점 + 상단 여백 (16px)
+                        const newTop = vv.offsetTop + HEADER_MARGIN;
+
+                        // 모달 팝업: 높이 및 위치 제한
+                        modalPopup.style.maxHeight = `${newMaxHeight}px`;
+
+                        // 모달을 VisualViewport 내에서 중앙 정렬하기 위해 top과 transform을 동시에 조정
+                        // (1) top을 뷰포트 시작점 + 16px 여백으로 설정
+                        modalPopup.style.top = `${newTop}px`;
+
+                        // (2) translate(-50%, 0)으로 X축만 중앙 정렬하고, Y축은 top을 따르게 함
+                        //     (기존 translate(-50%, -50%)를 무시하고 Y축 중앙 정렬을 재계산해야 합니다)
+                        modalPopup.style.transform = `translateX(-50%)`;
                     } else {
-                        // 키보드 닫힘
+                        // 키보드 닫힘: CSS 기본 중앙 정렬로 복구
                         modalPopup.style.maxHeight = "";
+                        modalPopup.style.top = "50%"; // CSS 기본값으로 복구
+                        modalPopup.style.transform = "translate(-50%, -50%)"; // CSS 기본값으로 복구
                     }
                 }
             }
