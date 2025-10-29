@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Mobile Keyboard Popup Adjustment</title>
+        <title>Mobile Keyboard Popup Adjustment - Final Fix</title>
 
         <style>
             /* --- CSS 스타일 시작 --- */
@@ -46,13 +46,15 @@
                 height: 100%;
                 background-color: rgba(0, 0, 0, 0.5);
                 z-index: 999;
-                display: none;
+                /* Dimmer는 기본적으로 숨김 처리 */
+                visibility: hidden;
+                opacity: 0;
+                transition: opacity 0.3s ease, visibility 0.3s;
                 backdrop-filter: blur(3px);
                 -webkit-backdrop-filter: blur(3px);
-                opacity: 0;
-                transition: opacity 0.3s ease;
             }
             .dimmer.active {
+                visibility: visible;
                 opacity: 1;
             }
 
@@ -68,6 +70,12 @@
                 flex-direction: column;
                 border-radius: 12px;
                 overflow: hidden;
+                /* 팝업도 기본적으로 숨김 처리 */
+                visibility: hidden;
+            }
+
+            .popup.active {
+                visibility: visible;
             }
 
             .popup-header {
@@ -120,10 +128,10 @@
                 width: 100%;
                 height: 60vh;
                 border-radius: 12px 12px 0 0;
-                transform: translateY(100%);
+                transform: translateY(100%); /* 화면 밖으로 완전히 숨김 */
             }
             .bottom-slide-popup.active {
-                transform: translateY(0);
+                transform: translateY(0); /* 활성화 시 화면에 나타남 */
             }
 
             /* --- 2. 모달 팝업 전용 스타일 --- */
@@ -145,7 +153,7 @@
     </head>
     <body>
         <div class="content">
-            <h1>✨ 팝업/모달 키보드 대응</h1>
+            <h1>✨ 팝업/모달 Dimmer & 키보드 대응</h1>
             <p>배경(Dimmer)을 클릭하면 팝업이 닫힙니다.</p>
             <button onclick="openPopup('bottom')">하단 팝업 열기</button>
             <button onclick="openPopup('modal')">모달 팝업 열기</button>
@@ -167,8 +175,7 @@
                 />
                 <p>
                     <strong>[하단 팝업 동작]</strong> 키보드가 올라오면, 팝업은
-                    높이가 줄어들고 키보드 바로 위로 애니메이션되어 붙습니다. 이
-                    영역 외 클릭 시 닫힙니다.
+                    높이가 줄어들고 키보드 바로 위로 애니메이션되어 붙습니다.
                 </p>
             </div>
             <div class="popup-footer">
@@ -186,7 +193,7 @@
                 <p>
                     <strong>[모달 팝업 동작]</strong> 키보드가 올라오면, 모달의
                     최대 높이가 줄어들어 키보드에 가려지지 않고 화면 가시 영역
-                    내에 표시됩니다. 이 영역 외 클릭 시 닫힙니다.
+                    내에 표시됩니다.
                 </p>
                 <p>스크롤 테스트용 내용...</p>
                 <p>...</p>
@@ -200,7 +207,7 @@
         </div>
 
         <script>
-            /* --- JavaScript 로직 시작 (수정됨) --- */
+            /* --- JavaScript 로직 시작 --- */
             let currentPopupId = null;
             const dimmer = document.getElementById("app-dimmer");
             const bottomPopup = document.getElementById("bottom-slide-popup");
@@ -210,25 +217,17 @@
              * 팝업을 여는 함수
              */
             function openPopup(type) {
-                // 1. Dimmer와 팝업 요소의 display를 'block'/'flex'로 설정하여 렌더링되게 함
-                dimmer.style.display = "block";
+                // 1. Dimmer 활성화
+                dimmer.classList.add("active");
+
+                // 2. 팝업 활성화
                 if (type === "bottom") {
-                    bottomPopup.style.display = "flex";
+                    bottomPopup.classList.add("active");
                     currentPopupId = "bottom";
                 } else if (type === "modal") {
-                    modalPopup.style.display = "flex";
+                    modalPopup.classList.add("active");
                     currentPopupId = "modal";
                 }
-
-                // 2. 짧은 딜레이 후 active 클래스를 추가하여 CSS transition(애니메이션) 실행
-                setTimeout(() => {
-                    dimmer.classList.add("active");
-                    if (type === "bottom") {
-                        bottomPopup.classList.add("active");
-                    } else if (type === "modal") {
-                        modalPopup.classList.add("active");
-                    }
-                }, 10); // 브라우저가 display 설정을 처리할 시간을 줌
 
                 handleViewportChange();
             }
@@ -245,23 +244,16 @@
                     resetPopup(modalPopup, "modal");
                 }
 
-                // 모든 팝업이 닫혔는지 확인 후 Dimmer 제거
+                // 닫힘 애니메이션 시간(0.3s) 후에 팝업이 완전히 닫혔는지 확인하고 Dimmer 비활성화
                 setTimeout(() => {
                     if (
                         !bottomPopup.classList.contains("active") &&
                         !modalPopup.classList.contains("active")
                     ) {
                         dimmer.classList.remove("active");
-
-                        // Dimmer 애니메이션 시간(0.3s) 후 완전히 숨김
-                        setTimeout(() => {
-                            dimmer.style.display = "none";
-                            bottomPopup.style.display = "none";
-                            modalPopup.style.display = "none";
-                            currentPopupId = null;
-                        }, 300);
+                        currentPopupId = null;
                     }
-                }, 50); // 팝업 닫힘 애니메이션 시작을 위한 짧은 딜레이
+                }, 300);
             }
 
             /**
@@ -280,7 +272,7 @@
                 // 키보드 대응으로 인한 inline 스타일 초기화
                 if (type === "bottom") {
                     popupElement.style.maxHeight = "";
-                    popupElement.style.transform = ""; // .active가 없으면 CSS 기본값(translateY(100%))으로 돌아가야 함
+                    popupElement.style.transform = "";
                 } else if (type === "modal") {
                     popupElement.style.maxHeight = "";
                 }
@@ -298,6 +290,7 @@
 
                 if (!currentPopupId) return;
 
+                // 하단 팝업 처리
                 if (
                     currentPopupId === "bottom" &&
                     bottomPopup.classList.contains("active")
@@ -307,11 +300,14 @@
                         bottomPopup.style.maxHeight = `${vv.height}px`;
                         bottomPopup.style.transform = `translateY(-${keyboardHeight}px)`;
                     } else {
-                        // 키보드 닫힘: 기본 active 상태의 transform으로 복구 (CSS가 처리)
+                        // 키보드 닫힘: 기본 active 상태의 transform으로 복구
                         bottomPopup.style.maxHeight = "";
                         bottomPopup.style.transform = "";
                     }
-                } else if (
+                }
+
+                // 모달 팝업 처리
+                else if (
                     currentPopupId === "modal" &&
                     modalPopup.classList.contains("active")
                 ) {
