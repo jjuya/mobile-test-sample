@@ -7,7 +7,7 @@
 
         <style>
             /* ---------------------------------------------------- */
-            /* --- CSS Styles --- */
+            /* 기본 스타일 */
             /* ---------------------------------------------------- */
             body {
                 margin: 0;
@@ -38,7 +38,9 @@
                 margin-right: 10px;
             }
 
-            /* Dimmer */
+            /* ---------------------------------------------------- */
+            /* Dimmer (배경 반투명 오버레이) */
+            /* ---------------------------------------------------- */
             .dimmer {
                 position: fixed;
                 top: 0;
@@ -46,31 +48,33 @@
                 width: 100%;
                 height: 100%;
                 background-color: rgba(0, 0, 0, 0.5);
-                z-index: 999;
+                backdrop-filter: blur(3px);
+                -webkit-backdrop-filter: blur(3px);
                 visibility: hidden;
                 opacity: 0;
                 transition: opacity 0.3s ease, visibility 0.3s;
-                backdrop-filter: blur(3px);
-                -webkit-backdrop-filter: blur(3px);
+                z-index: 999;
             }
             .dimmer.active {
                 visibility: visible;
                 opacity: 1;
             }
 
-            /* Popups Common */
+            /* ---------------------------------------------------- */
+            /* 팝업 공통 */
+            /* ---------------------------------------------------- */
             .popup {
                 position: fixed;
                 z-index: 1000;
                 background: white;
+                border-radius: 12px;
                 box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-                transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-                    max-height 0.3s ease, opacity 0.3s ease, top 0.3s ease;
+                overflow: hidden;
                 display: flex;
                 flex-direction: column;
-                border-radius: 12px;
-                overflow: hidden;
                 visibility: hidden;
+                transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                    max-height 0.3s ease, opacity 0.3s ease, top 0.3s ease;
             }
             .popup.active {
                 visibility: visible;
@@ -78,16 +82,9 @@
             .popup-header {
                 padding: 18px 20px;
                 background: #f8f9fa;
+                border-bottom: 1px solid #eee;
                 font-size: 18px;
                 font-weight: bold;
-                border-bottom: 1px solid #eee;
-                flex-shrink: 0;
-            }
-            .popup-footer {
-                padding: 15px 20px;
-                background: white;
-                border-top: 1px solid #eee;
-                text-align: right;
                 flex-shrink: 0;
             }
             .popup-body {
@@ -95,6 +92,13 @@
                 overflow-y: auto;
                 flex-grow: 1;
                 -webkit-overflow-scrolling: touch;
+            }
+            .popup-footer {
+                padding: 15px 20px;
+                border-top: 1px solid #eee;
+                text-align: right;
+                background: white;
+                flex-shrink: 0;
             }
             input[type="text"] {
                 width: 100%;
@@ -105,7 +109,9 @@
                 border-radius: 8px;
             }
 
-            /* Bottom Popup */
+            /* ---------------------------------------------------- */
+            /* 하단 슬라이드 팝업 */
+            /* ---------------------------------------------------- */
             .bottom-slide-popup {
                 bottom: 0;
                 left: 0;
@@ -119,7 +125,9 @@
                 transform: translateY(0);
             }
 
-            /* Modal Popup */
+            /* ---------------------------------------------------- */
+            /* 모달 팝업 */
+            /* ---------------------------------------------------- */
             .modal-popup {
                 top: 50%;
                 left: 50%;
@@ -135,12 +143,15 @@
             }
         </style>
     </head>
+
     <body>
         <div class="content">
             <h1>✨ 팝업/모달 키보드 대응</h1>
-            <p>배경(Dimmer)이나 닫기 버튼을 클릭해 팝업을 닫습니다.</p>
+            <p>배경(Dimmer) 또는 닫기 버튼을 눌러 팝업을 닫습니다.</p>
+
             <button onclick="openPopup('bottom')">하단 팝업 열기</button>
             <button onclick="openPopup('modal')">모달 팝업 열기</button>
+
             <input
                 type="text"
                 placeholder="일반 입력 테스트"
@@ -148,17 +159,15 @@
             />
         </div>
 
+        <!-- Dimmer -->
         <div id="app-dimmer" class="dimmer"></div>
 
+        <!-- Bottom Popup -->
         <div id="bottom-slide-popup" class="popup bottom-slide-popup">
             <div class="popup-header">하단 슬라이드 팝업</div>
             <div class="popup-body">
-                <input
-                    type="text"
-                    placeholder="여기에 입력하세요 (키보드 유도)"
-                />
+                <input type="text" placeholder="입력 테스트 (키보드 유도)" />
                 <p>스크롤 테스트용 내용...</p>
-                <p>...</p>
                 <p>...</p>
                 <p>...</p>
                 <p>...</p>
@@ -168,19 +177,16 @@
                 <p>...</p>
             </div>
             <div class="popup-footer">
-                <button onclick="closePopup('bottom')">닫기</button>
+                <button onclick="closePopup()">닫기</button>
             </div>
         </div>
 
+        <!-- Modal Popup -->
         <div id="modal-popup" class="popup modal-popup">
             <div class="popup-header">모달 팝업</div>
             <div class="popup-body">
-                <input
-                    type="text"
-                    placeholder="여기에 입력하세요 (키보드 유도)"
-                />
+                <input type="text" placeholder="입력 테스트 (키보드 유도)" />
                 <p>스크롤 테스트용 내용...</p>
-                <p>...</p>
                 <p>...</p>
                 <p>...</p>
                 <p>...</p>
@@ -190,50 +196,46 @@
                 <p>...</p>
             </div>
             <div class="popup-footer">
-                <button onclick="closePopup('modal')">닫기</button>
+                <button onclick="closePopup()">닫기</button>
             </div>
         </div>
 
         <script>
             /* ---------------------------------------------------- */
-            /* --- JavaScript Logic (Single DOM Element State) --- */
+            /* 전역 상태 관리 */
             /* ---------------------------------------------------- */
-
             const BOTTOM_POPUP_MARGIN_TOP = 120;
             const MODAL_MARGIN = 64;
 
-            // ✅ 상태 관리 변수: 현재 열린 팝업 DOM 요소만 저장
-            let currentPopupElement = null;
-
-            let savedScrollY = 0;
-            let lastTouchY = 0;
-            let closeTimeoutId = null; // 중복 닫기 방지용 Timeout ID (추가)
+            let currentPopupElement = null; // 현재 열린 팝업 DOM
+            let savedScrollY = 0; // 팝업 열기 전 스크롤 위치
+            let lastTouchY = 0; // 터치 위치 기록
 
             const dimmer = document.getElementById("app-dimmer");
             const bottomPopup = document.getElementById("bottom-slide-popup");
             const modalPopup = document.getElementById("modal-popup");
 
-            // Dimmer 클릭 핸들러: Dimmer 클릭 + 팝업 내부 클릭 아닐 경우 닫기
-            // (제공해주신 코드 대신, 이전 대화에서 합의된 안정적인 Dimmer 로직으로 복원)
+            /* ---------------------------------------------------- */
+            /* Dimmer 클릭 핸들러 */
+            /* ---------------------------------------------------- */
             const dimmerCloseHandler = (event) => {
                 const clickedOnPopup =
                     event.target.closest("#bottom-slide-popup") ||
                     event.target.closest("#modal-popup");
 
-                // currentPopupElement가 null이 아니며, 팝업 내부를 클릭하지 않았다면 닫기 실행
                 if (currentPopupElement && !clickedOnPopup) {
-                    closePopup(); // ✅ 닫기 요청 시 인자 없이 호출
+                    closePopup();
                 }
             };
 
-            // Dimmer 리스너는 open/close 시 동적으로 붙였다 떼는 것으로 최종 합의된 로직을 따릅니다.
-            // 전역 리스너는 삭제하고 openPopup에 추가하겠습니다.
-
-            // preventScroll function (내용 변경 없음)
+            /* ---------------------------------------------------- */
+            /* 스크롤 방지 로직 (팝업 외부 스크롤 차단) */
+            /* ---------------------------------------------------- */
             function preventScroll(e) {
                 const target = e.target;
-                const scrollablePopupBody = target.closest(".popup-body");
-                if (!scrollablePopupBody) {
+                const scrollableBody = target.closest(".popup-body");
+
+                if (!scrollableBody) {
                     e.preventDefault();
                     return;
                 }
@@ -244,32 +246,37 @@
                 }
 
                 if (e.type === "touchmove") {
-                    const currentTouchY = e.touches[0].clientY;
-                    const scrollDelta = currentTouchY - lastTouchY;
-                    const isScrollingUp = scrollDelta > 0;
+                    const currentY = e.touches[0].clientY;
+                    const deltaY = currentY - lastTouchY;
+                    const scrollingUp = deltaY > 0;
 
-                    if (scrollablePopupBody.scrollTop <= 0 && isScrollingUp) {
+                    if (scrollableBody.scrollTop <= 0 && scrollingUp) {
                         e.preventDefault();
                         return;
                     }
-                    const isAtBottom =
-                        scrollablePopupBody.scrollHeight -
-                            scrollablePopupBody.clientHeight -
-                            scrollablePopupBody.scrollTop <=
+
+                    const atBottom =
+                        scrollableBody.scrollHeight -
+                            scrollableBody.clientHeight -
+                            scrollableBody.scrollTop <=
                         1;
-                    if (isAtBottom && !isScrollingUp) {
+
+                    if (atBottom && !scrollingUp) {
                         e.preventDefault();
                         return;
                     }
 
-                    lastTouchY = currentTouchY;
+                    lastTouchY = currentY;
                 }
             }
 
-            // openPopup function: DOM 요소만 저장하고 Dimmer 리스너 추가
+            /* ---------------------------------------------------- */
+            /* 팝업 열기 */
+            /* ---------------------------------------------------- */
             function openPopup(type) {
                 if (currentPopupElement) return;
 
+                // 스크롤 고정
                 savedScrollY = window.scrollY;
                 document.body.style.top = `-${savedScrollY}px`;
                 document.body.classList.add("no-scroll");
@@ -281,92 +288,74 @@
                     passive: false,
                 });
 
+                // 팝업 표시
                 dimmer.classList.add("active");
                 if (type === "bottom") {
                     bottomPopup.classList.add("active");
-                    currentPopupElement = bottomPopup; // ✅ DOM 요소만 저장
-                } else if (type === "modal") {
+                    currentPopupElement = bottomPopup;
+                } else {
                     modalPopup.classList.add("active");
-                    currentPopupElement = modalPopup; // ✅ DOM 요소만 저장
+                    currentPopupElement = modalPopup;
                 }
 
-                // ✅ 팝업 열 때 Dimmer 리스너 추가
+                // Dimmer 클릭 리스너 추가
                 dimmer.addEventListener("click", dimmerCloseHandler);
 
                 handleViewportChange();
             }
 
-            /**
-             * closePopup function: 닫기 버튼/Dimmer 클릭 시 모두 사용, 인자 없음
-             */
-            // HTML onclick="closePopup('bottom')"은 그대로 유지하되, 내부에서 인자를 무시합니다.
-            function closePopup(type) {
-                // type 인자를 받으나, 사용하지 않고 전역 상태를 따릅니다.
+            /* ---------------------------------------------------- */
+            /* 팝업 닫기 */
+            /* ---------------------------------------------------- */
+            function closePopup() {
                 if (!currentPopupElement) return;
 
-                const closingElement = currentPopupElement;
-
-                // 팝업 요소의 실제 타입을 확인 (resetPopup을 위해 필요)
+                const closingEl = currentPopupElement;
                 const isBottom =
-                    closingElement.classList.contains("bottom-slide-popup");
-                const elementType = isBottom ? "bottom" : "modal";
+                    closingEl.classList.contains("bottom-slide-popup");
+                const type = isBottom ? "bottom" : "modal";
 
-                // ✅ 상태 즉시 초기화
                 currentPopupElement = null;
+                closingEl.classList.remove("active");
 
-                // 팝업 비활성화
-                closingElement.classList.remove("active");
-                resetPopup(closingElement, elementType);
-
+                resetPopup(closingEl, type);
                 cleanUpDimmerAndBackground();
             }
 
-            /**
-             * Dimmer 및 배경 정리 로직 (중복 호출 방지 및 트랜지션 대기)
-             */
+            /* ---------------------------------------------------- */
+            /* Dimmer 및 배경 정리 */
+            /* ---------------------------------------------------- */
             function cleanUpDimmerAndBackground() {
-                if (closeTimeoutId) return;
+                dimmer.removeEventListener("click", dimmerCloseHandler);
+                dimmer.classList.remove("active");
 
-                closeTimeoutId = setTimeout(() => {
-                    // ✅ 팝업 닫힐 때 Dimmer 리스너 제거
-                    dimmer.removeEventListener("click", dimmerCloseHandler);
+                document.body.classList.remove("no-scroll");
+                document.body.style.top = "";
+                window.scrollTo(0, savedScrollY);
 
-                    // Dimmer 및 배경 복구
-                    dimmer.classList.remove("active");
-                    document.body.classList.remove("no-scroll");
-                    document.body.style.top = "";
-                    window.scrollTo(0, savedScrollY);
-
-                    // 터치 이벤트 리스너 제거
-                    document.removeEventListener("touchstart", preventScroll);
-                    document.removeEventListener("touchmove", preventScroll);
-
-                    closeTimeoutId = null;
-                }, 300);
+                document.removeEventListener("touchstart", preventScroll);
+                document.removeEventListener("touchmove", preventScroll);
             }
 
-            // resetPopup function (내용 변경 없음)
-            function resetPopup(popupElement, type) {
-                // type 인자가 있으면 사용하고, 없으면 클래스를 검사하여 사용
-                const checkType =
-                    type ||
-                    (popupElement.classList.contains("bottom-slide-popup")
-                        ? "bottom"
-                        : "modal");
-
-                if (checkType === "bottom") {
-                    popupElement.style.maxHeight = "";
-                    popupElement.style.top = "auto";
-                    popupElement.style.bottom = "0";
-                    popupElement.style.transform = "";
-                } else if (checkType === "modal") {
-                    popupElement.style.maxHeight = "";
-                    popupElement.style.top = "50%";
-                    popupElement.style.transform = "translate(-50%, -50%)";
+            /* ---------------------------------------------------- */
+            /* 팝업 위치/높이 초기화 */
+            /* ---------------------------------------------------- */
+            function resetPopup(el, type) {
+                if (type === "bottom") {
+                    el.style.maxHeight = "";
+                    el.style.top = "auto";
+                    el.style.bottom = "0";
+                    el.style.transform = "";
+                } else {
+                    el.style.maxHeight = "";
+                    el.style.top = "50%";
+                    el.style.transform = "translate(-50%, -50%)";
                 }
             }
 
-            // handleViewportChange function (DOM 요소의 클래스 직접 검사)
+            /* ---------------------------------------------------- */
+            /* 키보드 대응 (viewport 변화 감지) */
+            /* ---------------------------------------------------- */
             function handleViewportChange() {
                 const vv = window.visualViewport;
                 const layoutHeight = window.innerHeight;
@@ -374,40 +363,34 @@
 
                 if (!currentPopupElement) return;
 
-                // DOM 요소의 클래스를 직접 확인하여 타입 결정
                 const isBottom =
                     currentPopupElement.classList.contains(
                         "bottom-slide-popup"
                     );
 
+                // 하단 팝업
                 if (
                     isBottom &&
                     currentPopupElement.classList.contains("active")
                 ) {
                     if (isKeyboardVisible) {
                         const vvTop = vv.offsetTop;
-                        const targetTop = Math.max(
-                            vvTop,
-                            BOTTOM_POPUP_MARGIN_TOP
-                        );
-                        const targetMaxHeight = vv.height - (targetTop - vvTop);
-                        const finalMaxHeight = Math.min(
-                            targetMaxHeight,
+                        const top = Math.max(vvTop, BOTTOM_POPUP_MARGIN_TOP);
+                        const maxHeight = Math.min(
+                            vv.height - (top - vvTop),
                             layoutHeight - BOTTOM_POPUP_MARGIN_TOP
                         );
 
-                        currentPopupElement.style.maxHeight = `${finalMaxHeight}px`;
-                        currentPopupElement.style.top = `${targetTop}px`;
+                        currentPopupElement.style.maxHeight = `${maxHeight}px`;
+                        currentPopupElement.style.top = `${top}px`;
                         currentPopupElement.style.bottom = "auto";
                         currentPopupElement.style.transform = "translateY(0)";
                     } else {
-                        currentPopupElement.style.maxHeight = "";
-                        currentPopupElement.style.top = "auto";
-                        currentPopupElement.style.bottom = "0";
-                        currentPopupElement.style.transform = "";
+                        resetPopup(currentPopupElement, "bottom");
                     }
                 }
-                // 모달 팝업인 경우
+
+                // 모달 팝업
                 else if (
                     !isBottom &&
                     currentPopupElement.classList.contains("active")
@@ -420,15 +403,14 @@
                         currentPopupElement.style.top = `${newTop}px`;
                         currentPopupElement.style.transform = `translateX(-50%)`;
                     } else {
-                        currentPopupElement.style.maxHeight = "";
-                        currentPopupElement.style.top = "50%";
-                        currentPopupElement.style.transform =
-                            "translate(-50%, -50%)";
+                        resetPopup(currentPopupElement, "modal");
                     }
                 }
             }
 
-            // --- Event Listeners Registration ---
+            /* ---------------------------------------------------- */
+            /* Viewport 이벤트 등록 */
+            /* ---------------------------------------------------- */
             if (window.visualViewport) {
                 window.visualViewport.addEventListener(
                     "resize",
