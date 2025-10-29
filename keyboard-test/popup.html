@@ -293,7 +293,10 @@
                 if (!currentPopupId) return;
 
                 // 하단 팝업 처리
-                if (currentPopupId === 'bottom' && bottomPopup.classList.contains('active')) {
+                if (
+                    currentPopupId === "bottom" &&
+                    bottomPopup.classList.contains("active")
+                ) {
                     if (isKeyboardVisible) {
                         // 1. 키보드 위에 붙이면서 상단에 16px 여백을 확보하도록 계산
 
@@ -312,54 +315,18 @@
                         // 'transform: translateY(...)' 대신 'top'을 사용하여 팝업을 정확한 위치에 고정합니다.
                         // 기존 CSS의 bottom: 0; transform: translateY(100%);를 무시하고 fixed top으로 전환합니다.
                         bottomPopup.style.top = `${newTop}px`;
-                        bottomPopup.style.bottom = 'auto';
-                        bottomPopup.style.transform = 'translateY(0)'; // 키보드 관련 transform 제거
-
+                        bottomPopup.style.bottom = "auto";
+                        bottomPopup.style.transform = "translateY(0)"; // 키보드 관련 transform 제거
                     } else {
                         // 키보드 닫힘: 기본 active 상태의 CSS로 복구
-                        bottomPopup.style.maxHeight = '';
-                        bottomPopup.style.top = 'auto';     // top 제거
-                        bottomPopup.style.bottom = '0';     // bottom: 0 복구
-                        bottomPopup.style.transform = '';   // CSS의 translateY(0) 복구
+                        bottomPopup.style.maxHeight = "";
+                        bottomPopup.style.top = "auto"; // top 제거
+                        bottomPopup.style.bottom = "0"; // bottom: 0 복구
+                        bottomPopup.style.transform = ""; // CSS의 translateY(0) 복구
                     }
                 }
 
                 // 모달 팝업 처리 (기존 로직 유지)
-                else if (currentPopupId === 'modal' && modalPopup.classList.contains('active')) {
-                    if (isKeyboardVisible) {
-                        // 모달 팝업: 높이 제한
-                        modalPopup.style.maxHeight = `${vv.height}px`;
-                    } else {
-                        // 키보드 닫힘
-                        modalPopup.style.maxHeight = '';
-                    }
-                }
-            }
-                const vv = window.visualViewport;
-                const layoutHeight = window.innerHeight;
-
-                const isKeyboardVisible = vv.height < layoutHeight;
-                const keyboardHeight = layoutHeight - vv.height;
-
-                if (!currentPopupId) return;
-
-                // 하단 팝업 처리
-                if (
-                    currentPopupId === "bottom" &&
-                    bottomPopup.classList.contains("active")
-                ) {
-                    if (isKeyboardVisible) {
-                        // 키보드 위에 붙임
-                        bottomPopup.style.maxHeight = `${vv.height}px`;
-                        bottomPopup.style.transform = `translateY(-${keyboardHeight}px)`;
-                    } else {
-                        // 키보드 닫힘: 기본 active 상태의 transform으로 복구
-                        bottomPopup.style.maxHeight = "";
-                        bottomPopup.style.transform = "";
-                    }
-                }
-
-                // 모달 팝업 처리
                 else if (
                     currentPopupId === "modal" &&
                     modalPopup.classList.contains("active")
