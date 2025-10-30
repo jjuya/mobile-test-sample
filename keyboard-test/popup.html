@@ -5,6 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Popup/Modal Keyboard 완전 대응</title>
         <style>
+            /* ---------------------- 기본 스타일 ---------------------- */
             body {
                 margin: 0;
                 font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
@@ -13,6 +14,7 @@
                 height: 200vh;
                 padding-bottom: 20px;
             }
+            /* 팝업 열릴 때 스크롤 막기 */
             body.no-scroll {
                 overflow: hidden !important;
                 width: 100% !important;
@@ -35,6 +37,7 @@
                 transition: background 0.2s;
             }
 
+            /* ---------------------- Dimmer (배경 반투명) ---------------------- */
             .dimmer {
                 position: fixed;
                 top: 0;
@@ -54,6 +57,7 @@
                 opacity: 1;
             }
 
+            /* ---------------------- 팝업 공통 ---------------------- */
             .popup {
                 position: fixed;
                 z-index: 1000;
@@ -70,6 +74,7 @@
             .popup.active {
                 visibility: visible;
             }
+
             .popup-header {
                 padding: 18px 20px;
                 background: #f8f9fa;
@@ -100,6 +105,7 @@
                 border-radius: 8px;
             }
 
+            /* ---------------------- 하단 슬라이드 팝업 ---------------------- */
             .bottom-slide-popup {
                 bottom: 0;
                 left: 0;
@@ -112,6 +118,8 @@
             .bottom-slide-popup.active {
                 transform: translateY(0);
             }
+
+            /* ---------------------- 모달 팝업 ---------------------- */
             .modal-popup {
                 top: 50%;
                 left: 50%;
@@ -129,7 +137,7 @@
     </head>
     <body>
         <div class="content">
-            <h1>✨ 팝업/모달 키보드 완전 대응</h1>
+            <h1>팝업/모달 키보드 완전 대응</h1>
             <button onclick="openPopup('bottom')">하단 팝업 열기</button>
             <button onclick="openPopup('modal')">모달 팝업 열기</button>
             <input
@@ -139,19 +147,15 @@
             />
         </div>
 
+        <!-- Dimmer -->
         <div id="app-dimmer" class="dimmer"></div>
 
+        <!-- 하단 슬라이드 팝업 -->
         <div id="bottom-slide-popup" class="popup bottom-slide-popup">
             <div class="popup-header">하단 슬라이드 팝업</div>
             <div class="popup-body">
                 <input type="text" placeholder="입력 테스트 (키보드 유도)" />
                 <p>스크롤 테스트용 내용...</p>
-                <p>...</p>
-                <p>...</p>
-                <p>...</p>
-                <p>...</p>
-                <p>...</p>
-                <p>...</p>
                 <p>...</p>
                 <p>...</p>
             </div>
@@ -160,17 +164,12 @@
             </div>
         </div>
 
+        <!-- 모달 팝업 -->
         <div id="modal-popup" class="popup modal-popup">
             <div class="popup-header">모달 팝업</div>
             <div class="popup-body">
                 <input type="text" placeholder="입력 테스트 (키보드 유도)" />
                 <p>스크롤 테스트용 내용...</p>
-                <p>...</p>
-                <p>...</p>
-                <p>...</p>
-                <p>...</p>
-                <p>...</p>
-                <p>...</p>
                 <p>...</p>
                 <p>...</p>
             </div>
@@ -188,13 +187,13 @@
             let savedScrollY = 0;
             let lastTouchY = 0;
 
+            // 하단/모달 팝업 여백
             const BOTTOM_POPUP_MARGIN_TOP = 120;
             const MODAL_POPUP_MARGIN = 60;
 
-            /* ---------------------- */
-            /* 스크롤/터치 처리 */
+            /* ---------------------- 스크롤/터치 처리 ---------------------- */
             function preventOuterScroll(e) {
-                if (!e.target.closest(".popup-body")) e.preventDefault();
+                if (!e.target.closest(".popup-body")) e.preventDefault(); // 팝업 외부 스크롤 차단
             }
             function onPopupTouchStart(e) {
                 lastTouchY = e.touches[0].clientY;
@@ -216,15 +215,13 @@
                 lastTouchY = currentY;
             }
 
-            /* ---------------------- */
-            /* 딤 클릭 처리 */
+            /* ---------------------- Dimmer 클릭 처리 ---------------------- */
             function onDimmerClose(e) {
                 if (!e.target.closest(".popup") && currentPopupElement)
                     closePopup();
             }
 
-            /* ---------------------- */
-            /* 키보드/위치 보정 */
+            /* ---------------------- 키보드/위치 보정 ---------------------- */
             function adjustPopupForKeyboard() {
                 if (!currentPopupElement) return;
                 const vv = window.visualViewport;
@@ -260,6 +257,7 @@
                             "translate(-50%,-50%)";
                     }
                 } else {
+                    // 키보드 닫힘 시 원래 위치
                     if (isBottom) {
                         currentPopupElement.style.top = "auto";
                         currentPopupElement.style.bottom = "0";
@@ -274,8 +272,7 @@
                 }
             }
 
-            /* ---------------------- */
-            /* 팝업 열기 */
+            /* ---------------------- 팝업 열기 ---------------------- */
             function openPopup(type) {
                 if (currentPopupElement) return;
                 savedScrollY = window.scrollY;
@@ -289,6 +286,7 @@
                     type === "bottom" ? bottomPopup : modalPopup;
                 currentPopupElement.classList.add("active");
 
+                // popup-body 터치 스크롤 이벤트 연결
                 const bodyEl = currentPopupElement.querySelector(".popup-body");
                 bodyEl.addEventListener("touchstart", onPopupTouchStart, {
                     passive: false,
@@ -302,7 +300,7 @@
                     passive: true,
                 });
 
-                // input focus/blur 이벤트
+                // input focus/blur 이벤트 연결
                 const inputs =
                     currentPopupElement.querySelectorAll("input,textarea");
                 inputs.forEach((input) => {
@@ -313,8 +311,7 @@
                 adjustPopupForKeyboard();
             }
 
-            /* ---------------------- */
-            /* 팝업 닫기 */
+            /* ---------------------- 팝업 닫기 ---------------------- */
             function closePopup() {
                 if (!currentPopupElement) return;
                 const popup = currentPopupElement;
@@ -340,8 +337,7 @@
                 currentPopupElement = null;
             }
 
-            /* ---------------------- */
-            /* VisualViewport 이벤트 */
+            /* ---------------------- VisualViewport 이벤트 ---------------------- */
             if (window.visualViewport) {
                 window.visualViewport.addEventListener(
                     "resize",
