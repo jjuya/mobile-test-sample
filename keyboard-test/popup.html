@@ -176,163 +176,158 @@
         </div>
 
         <script>
-            const dimmer = document.getElementById("dimmer");
-            const bottomPopup = document.getElementById("bottomPopup");
-            const modalPopup = document.getElementById("modalPopup");
-            let currentPopup = null;
-            let savedScrollY = 0;
-            let lastTouchY = 0;
-            const BOTTOM_MARGIN_TOP = 120;
-            const MODAL_MARGIN = 64;
+            // ✅ PopupTouchHelper: 모바일 터치/스크롤/닫기 대응 전용 유틸
+            (function () {
+                let lastTouchY = 0;
 
-            /* -----------------------------
-             * 팝업 열기
-             * ----------------------------- */
-            function openPopup(type) {
-                if (currentPopup) return;
-                savedScrollY = window.scrollY;
-                document.body.classList.add("scrollLock");
-
-                dimmer.classList.add("active");
-                currentPopup = type === "bottom" ? bottomPopup : modalPopup;
-                currentPopup.classList.add("active");
-
-                dimmer.addEventListener("click", handleDimmerClick);
-                attachScrollBlocker();
-                handleViewportChange();
-            }
-
-            /* -----------------------------
-             * 팝업 닫기
-             * ----------------------------- */
-            function closePopup() {
-                if (!currentPopup) return;
-                currentPopup.classList.remove("active");
-                dimmer.classList.remove("active");
-                document.body.classList.remove("scrollLock");
-                dimmer.removeEventListener("click", handleDimmerClick);
-                detachScrollBlocker();
-                currentPopup = null;
-            }
-
-            /* -----------------------------
-             * 딤 클릭 시 닫기
-             * ----------------------------- */
-            function handleDimmerClick(e) {
-                const isInsidePopup = e.target.closest(".popup");
-                if (!isInsidePopup) closePopup();
-            }
-
-            /* -----------------------------
-             * 스크롤 차단 + input blur 처리
-             * ----------------------------- */
-            function attachScrollBlocker() {
-                document.addEventListener("touchstart", handleTouch, {
-                    passive: false,
-                });
-                document.addEventListener("touchmove", handleTouch, {
-                    passive: false,
-                });
-            }
-
-            function detachScrollBlocker() {
-                document.removeEventListener("touchstart", handleTouch);
-                document.removeEventListener("touchmove", handleTouch);
-            }
-
-            function handleTouch(e) {
-                const popupBody = e.target.closest(".popup-body");
-
-                // ✅ 팝업 내부에서 스크롤 중이면 input focus 해제 (iOS 키보드 닫기)
-                if (popupBody && e.type === "touchmove") {
-                    const activeEl = document.activeElement;
-                    if (
-                        activeEl &&
-                        (activeEl.tagName === "INPUT" ||
-                            activeEl.tagName === "TEXTAREA")
-                    ) {
-                        activeEl.blur();
-                    }
-                }
-
-                if (!popupBody) {
-                    e.preventDefault();
-                    return;
-                }
-
-                if (e.type === "touchstart") {
+                function handleTouchStart(e) {
                     lastTouchY = e.touches[0].clientY;
-                    return;
                 }
 
-                if (e.type === "touchmove") {
+                function handleTouchMove(e) {
+                    const popupBody = e.currentTarget;
                     const currentY = e.touches[0].clientY;
                     const deltaY = currentY - lastTouchY;
-                    const scrollingUp = deltaY > 0;
-                    const atTop = popupBody.scrollTop <= 0;
-                    const atBottom =
-                        popupBody.scrollHeight -
-                            popupBody.clientHeight -
-                            popupBody.scrollTop <=
-                        1;
-                    if ((atTop && scrollingUp) || (atBottom && !scrollingUp))
+
+                    // scroll 경계에서만 막음 (bounce 방지)
+                    if (
+                        (popupBody.scrollTop === 0 && deltaY > 0) ||
+                        (popupBody.scrollTop + popupBody.offsetHeight >=
+                            popupBody.scrollHeight &&
+                            deltaY < 0)
+                    ) {
                         e.preventDefault();
+                    }
+
                     lastTouchY = currentY;
                 }
-            }
 
-            /* -----------------------------
-             * 키보드 대응 (viewport 변화 감지)
-             * ----------------------------- */
-            function handleViewportChange() {
-                const vv = window.visualViewport;
-                if (!vv || !currentPopup) return;
-                const layoutHeight = window.innerHeight;
-                const isKeyboardVisible = vv.height < layoutHeight;
-                const isBottom =
-                    currentPopup.classList.contains("bottom-slide-popup");
-
-                if (isBottom) {
-                    if (isKeyboardVisible) {
-                        const top = Math.max(vv.offsetTop, BOTTOM_MARGIN_TOP);
-                        const maxHeight = Math.min(
-                            vv.height - (top - vv.offsetTop),
-                            layoutHeight - BOTTOM_MARGIN_TOP
-                        );
-                        currentPopup.style.maxHeight = `${maxHeight}px`;
-                        currentPopup.style.top = `${top}px`;
-                        currentPopup.style.bottom = "auto";
-                        currentPopup.style.transform = "translateY(0)";
-                    } else {
-                        currentPopup.style.top = "auto";
-                        currentPopup.style.bottom = "0";
-                        currentPopup.style.maxHeight = "";
-                    }
-                } else {
-                    if (isKeyboardVisible) {
-                        const newMaxHeight = vv.height - MODAL_MARGIN * 2;
-                        const newTop = vv.offsetTop + MODAL_MARGIN;
-                        currentPopup.style.maxHeight = `${newMaxHeight}px`;
-                        currentPopup.style.top = `${newTop}px`;
-                        currentPopup.style.transform = "translateX(-50%)";
-                    } else {
-                        currentPopup.style.top = "50%";
-                        currentPopup.style.maxHeight = "";
-                        currentPopup.style.transform = "translate(-50%, -50%)";
+                function blockOuterScroll(e) {
+                    // popup-body 외부 터치 시 스크롤 차단
+                    if (!e.target.closest(".popup-body")) {
+                        e.preventDefault();
                     }
                 }
+
+                function handlePopupTouch(e) {
+                    // popup-body 터치 시 input focus 해제 → 키보드 닫기
+                    const active = document.activeElement;
+                    if (
+                        active &&
+                        /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName)
+                    ) {
+                        active.blur();
+                    }
+                }
+
+                function handleDimmerClose(e) {
+                    const insidePopup = e.target.closest(".popup");
+                    if (!insidePopup) {
+                        closePopup();
+                    }
+                }
+
+                window.PopupTouchHelper = {
+                    attach() {
+                        const popupBody = document.querySelector(".popup-body");
+                        const dimmer = document.querySelector(".dimmer");
+                        if (!popupBody || !dimmer) return;
+
+                        popupBody.addEventListener(
+                            "touchstart",
+                            handleTouchStart,
+                            { passive: false }
+                        );
+                        popupBody.addEventListener(
+                            "touchmove",
+                            handleTouchMove,
+                            { passive: false }
+                        );
+                        popupBody.addEventListener(
+                            "touchstart",
+                            handlePopupTouch,
+                            { passive: true }
+                        );
+
+                        document.addEventListener(
+                            "touchmove",
+                            blockOuterScroll,
+                            { passive: false }
+                        );
+
+                        dimmer.addEventListener(
+                            "click",
+                            handleDimmerClose,
+                            true
+                        );
+                        dimmer.addEventListener("touchend", handleDimmerClose, {
+                            passive: true,
+                        });
+                    },
+                    detach() {
+                        const popupBody = document.querySelector(".popup-body");
+                        const dimmer = document.querySelector(".dimmer");
+                        if (!popupBody || !dimmer) return;
+
+                        popupBody.removeEventListener(
+                            "touchstart",
+                            handleTouchStart
+                        );
+                        popupBody.removeEventListener(
+                            "touchmove",
+                            handleTouchMove
+                        );
+                        popupBody.removeEventListener(
+                            "touchstart",
+                            handlePopupTouch
+                        );
+
+                        document.removeEventListener(
+                            "touchmove",
+                            blockOuterScroll
+                        );
+
+                        dimmer.removeEventListener(
+                            "click",
+                            handleDimmerClose,
+                            true
+                        );
+                        dimmer.removeEventListener(
+                            "touchend",
+                            handleDimmerClose
+                        );
+                    },
+                };
+            })();
+
+            function openPopup() {
+                const popup = document.querySelector(".popup");
+                const dimmer = document.querySelector(".dimmer");
+
+                popup.classList.add("show");
+                dimmer.style.display = "block";
+                document.body.classList.add("no-scroll");
+
+                PopupTouchHelper.attach(); // 모바일 대응 attach
             }
 
-            if (window.visualViewport) {
-                window.visualViewport.addEventListener(
-                    "resize",
-                    handleViewportChange
-                );
-                window.visualViewport.addEventListener(
-                    "scroll",
-                    handleViewportChange
-                );
+            function closePopup() {
+                const popup = document.querySelector(".popup");
+                const dimmer = document.querySelector(".dimmer");
+
+                popup.classList.remove("show");
+                dimmer.style.display = "none";
+                document.body.classList.remove("no-scroll");
+
+                PopupTouchHelper.detach(); // 이벤트 해제
             }
+
+            document
+                .getElementById("openBtn")
+                .addEventListener("click", openPopup);
+            document
+                .getElementById("closeBtn")
+                .addEventListener("click", closePopup);
         </script>
     </body>
 </html>
