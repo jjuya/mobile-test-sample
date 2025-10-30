@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Mobile Popup - iOS 대응 최신 안정 버전</title>
+        <title>Mobile Popup - Final Stable Version (Fixed)</title>
         <style>
             body {
                 margin: 0;
@@ -11,20 +11,43 @@
                 background-color: #f0f2f5;
                 color: #333;
                 height: 200vh;
+                padding-bottom: 20px;
             }
-            body.scrollLock {
-                overflow: hidden;
-                touch-action: none; /* iOS Safari 스크롤 차단용 */
+            body.no-scroll {
+                overflow: hidden !important;
+                width: 100% !important;
+                position: relative !important;
+                touch-action: none;
+            }
+
+            .content {
+                padding: 20px;
+            }
+
+            button {
+                padding: 10px 15px;
+                border: none;
+                border-radius: 8px;
+                background-color: #007bff;
+                color: white;
+                font-size: 16px;
+                cursor: pointer;
+                transition: background-color 0.2s;
+                margin-right: 10px;
             }
 
             .dimmer {
                 position: fixed;
-                inset: 0;
-                background: rgba(0, 0, 0, 0.5);
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0, 0, 0, 0.5);
                 backdrop-filter: blur(3px);
+                -webkit-backdrop-filter: blur(3px);
                 visibility: hidden;
                 opacity: 0;
-                transition: opacity 0.3s ease;
+                transition: opacity 0.3s ease, visibility 0.3s;
                 z-index: 999;
             }
             .dimmer.active {
@@ -35,7 +58,7 @@
             .popup {
                 position: fixed;
                 z-index: 1000;
-                background: #fff;
+                background: white;
                 border-radius: 12px;
                 box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
                 overflow: hidden;
@@ -43,33 +66,50 @@
                 flex-direction: column;
                 visibility: hidden;
                 transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-                    opacity 0.3s ease, top 0.3s ease;
+                    max-height 0.3s ease, opacity 0.3s ease, top 0.3s ease;
             }
             .popup.active {
                 visibility: visible;
             }
+
             .popup-header {
                 padding: 18px 20px;
                 background: #f8f9fa;
                 border-bottom: 1px solid #eee;
-                font-weight: bold;
                 font-size: 18px;
+                font-weight: bold;
+                flex-shrink: 0;
             }
+
             .popup-body {
-                flex: 1;
-                overflow-y: auto;
-                -webkit-overflow-scrolling: touch;
                 padding: 20px;
+                overflow-y: auto;
+                flex-grow: 1;
+                -webkit-overflow-scrolling: touch;
             }
+
             .popup-footer {
                 padding: 15px 20px;
                 border-top: 1px solid #eee;
                 text-align: right;
+                background: white;
+                flex-shrink: 0;
             }
+
+            input[type="text"] {
+                width: 100%;
+                padding: 12px;
+                margin-bottom: 15px;
+                box-sizing: border-box;
+                border: 1px solid #ced4da;
+                border-radius: 8px;
+            }
+
+            /* 하단 팝업 */
             .bottom-slide-popup {
+                bottom: 0;
                 left: 0;
                 right: 0;
-                bottom: 0;
                 width: 100%;
                 max-height: 60vh;
                 border-radius: 12px 12px 0 0;
@@ -78,11 +118,14 @@
             .bottom-slide-popup.active {
                 transform: translateY(0);
             }
+
+            /* 모달 팝업 */
             .modal-popup {
-                left: 50%;
                 top: 50%;
+                left: 50%;
                 width: 90%;
                 max-width: 400px;
+                max-height: 80vh;
                 transform: translate(-50%, -50%) scale(0.9);
                 opacity: 0;
             }
@@ -90,53 +133,29 @@
                 transform: translate(-50%, -50%) scale(1);
                 opacity: 1;
             }
-
-            input[type="text"] {
-                width: 100%;
-                padding: 12px;
-                margin-bottom: 15px;
-                box-sizing: border-box;
-                border: 1px solid #ccc;
-                border-radius: 8px;
-            }
-
-            button {
-                padding: 10px 16px;
-                border: none;
-                border-radius: 8px;
-                background: #007bff;
-                color: #fff;
-                cursor: pointer;
-            }
         </style>
     </head>
+
     <body>
-        <div class="content" style="padding: 20px">
-            <h1>✨ 팝업/모달 (iOS 대응 안정 버전)</h1>
+        <div class="content">
+            <h1>✨ 팝업/모달 키보드 대응 개선</h1>
             <button onclick="openPopup('bottom')">하단 팝업 열기</button>
             <button onclick="openPopup('modal')">모달 팝업 열기</button>
-            <br /><br />
-            <input type="text" placeholder="본문 입력 테스트" />
+
+            <input
+                type="text"
+                placeholder="일반 입력 테스트"
+                style="margin-top: 20px"
+            />
         </div>
 
-        <div id="dimmer" class="dimmer"></div>
+        <div id="app-dimmer" class="dimmer"></div>
 
-        <!-- Bottom Popup -->
-        <div id="bottomPopup" class="popup bottom-slide-popup">
-            <div class="popup-header">하단 팝업</div>
+        <div id="bottom-slide-popup" class="popup bottom-slide-popup">
+            <div class="popup-header">하단 슬라이드 팝업</div>
             <div class="popup-body">
                 <input type="text" placeholder="입력 테스트 (키보드 유도)" />
                 <p>스크롤 테스트용 내용...</p>
-                <p>...</p>
-                <p>...</p>
-                <p>...</p>
-                <p>...</p>
-                <p>...</p>
-                <p>...</p>
-                <p>...</p>
-                <p>...</p>
-                <p>...</p>
-                <p>...</p>
                 <p>...</p>
                 <p>...</p>
                 <p>...</p>
@@ -148,22 +167,11 @@
             </div>
         </div>
 
-        <!-- Modal Popup -->
-        <div id="modalPopup" class="popup modal-popup">
+        <div id="modal-popup" class="popup modal-popup">
             <div class="popup-header">모달 팝업</div>
             <div class="popup-body">
                 <input type="text" placeholder="입력 테스트 (키보드 유도)" />
                 <p>스크롤 테스트용 내용...</p>
-                <p>...</p>
-                <p>...</p>
-                <p>...</p>
-                <p>...</p>
-                <p>...</p>
-                <p>...</p>
-                <p>...</p>
-                <p>...</p>
-                <p>...</p>
-                <p>...</p>
                 <p>...</p>
                 <p>...</p>
                 <p>...</p>
@@ -176,158 +184,122 @@
         </div>
 
         <script>
-            // ✅ PopupTouchHelper: 모바일 터치/스크롤/닫기 대응 전용 유틸
-            (function () {
-                let lastTouchY = 0;
+            const dimmer = document.getElementById("app-dimmer");
+            const bottomPopup = document.getElementById("bottom-slide-popup");
+            const modalPopup = document.getElementById("modal-popup");
 
-                function handleTouchStart(e) {
-                    lastTouchY = e.touches[0].clientY;
+            let currentPopupElement = null;
+            let savedScrollY = 0;
+            let lastTouchY = 0;
+
+            /* 스크롤 차단 (팝업 외부는 스크롤 불가) */
+            function preventOuterScroll(e) {
+                if (!e.target.closest(".popup-body")) {
+                    e.preventDefault();
+                }
+            }
+
+            /* 팝업 내부 스크롤 허용 + bounce 방지 + input blur */
+            function onPopupTouchStart(e) {
+                lastTouchY = e.touches[0].clientY;
+            }
+
+            function onPopupTouchMove(e) {
+                const scrollable = e.currentTarget;
+                const currentY = e.touches[0].clientY;
+                const deltaY = currentY - lastTouchY;
+
+                // 🔹 focus 해제 (키보드 닫기)
+                const active = document.activeElement;
+                if (
+                    active &&
+                    /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName)
+                ) {
+                    active.blur();
                 }
 
-                function handleTouchMove(e) {
-                    const popupBody = e.currentTarget;
-                    const currentY = e.touches[0].clientY;
-                    const deltaY = currentY - lastTouchY;
-
-                    // scroll 경계에서만 막음 (bounce 방지)
-                    if (
-                        (popupBody.scrollTop === 0 && deltaY > 0) ||
-                        (popupBody.scrollTop + popupBody.offsetHeight >=
-                            popupBody.scrollHeight &&
-                            deltaY < 0)
-                    ) {
-                        e.preventDefault();
-                    }
-
-                    lastTouchY = currentY;
+                // 🔹 bounce 방지
+                if (
+                    (scrollable.scrollTop === 0 && deltaY > 0) ||
+                    (scrollable.scrollTop + scrollable.clientHeight >=
+                        scrollable.scrollHeight &&
+                        deltaY < 0)
+                ) {
+                    e.preventDefault();
                 }
 
-                function blockOuterScroll(e) {
-                    // popup-body 외부 터치 시 스크롤 차단
-                    if (!e.target.closest(".popup-body")) {
-                        e.preventDefault();
-                    }
+                lastTouchY = currentY;
+            }
+
+            /* 딤 클릭 닫기 (모바일에서도 정상작동) */
+            function onDimmerClose(e) {
+                const isInsidePopup = e.target.closest(".popup");
+                if (!isInsidePopup && currentPopupElement) {
+                    closePopup();
                 }
+            }
 
-                function handlePopupTouch(e) {
-                    // popup-body 터치 시 input focus 해제 → 키보드 닫기
-                    const active = document.activeElement;
-                    if (
-                        active &&
-                        /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName)
-                    ) {
-                        active.blur();
-                    }
-                }
+            /* 팝업 열기 */
+            function openPopup(type) {
+                if (currentPopupElement) return;
 
-                function handleDimmerClose(e) {
-                    const insidePopup = e.target.closest(".popup");
-                    if (!insidePopup) {
-                        closePopup();
-                    }
-                }
-
-                window.PopupTouchHelper = {
-                    attach() {
-                        const popupBody = document.querySelector(".popup-body");
-                        const dimmer = document.querySelector(".dimmer");
-                        if (!popupBody || !dimmer) return;
-
-                        popupBody.addEventListener(
-                            "touchstart",
-                            handleTouchStart,
-                            { passive: false }
-                        );
-                        popupBody.addEventListener(
-                            "touchmove",
-                            handleTouchMove,
-                            { passive: false }
-                        );
-                        popupBody.addEventListener(
-                            "touchstart",
-                            handlePopupTouch,
-                            { passive: true }
-                        );
-
-                        document.addEventListener(
-                            "touchmove",
-                            blockOuterScroll,
-                            { passive: false }
-                        );
-
-                        dimmer.addEventListener(
-                            "click",
-                            handleDimmerClose,
-                            true
-                        );
-                        dimmer.addEventListener("touchend", handleDimmerClose, {
-                            passive: true,
-                        });
-                    },
-                    detach() {
-                        const popupBody = document.querySelector(".popup-body");
-                        const dimmer = document.querySelector(".dimmer");
-                        if (!popupBody || !dimmer) return;
-
-                        popupBody.removeEventListener(
-                            "touchstart",
-                            handleTouchStart
-                        );
-                        popupBody.removeEventListener(
-                            "touchmove",
-                            handleTouchMove
-                        );
-                        popupBody.removeEventListener(
-                            "touchstart",
-                            handlePopupTouch
-                        );
-
-                        document.removeEventListener(
-                            "touchmove",
-                            blockOuterScroll
-                        );
-
-                        dimmer.removeEventListener(
-                            "click",
-                            handleDimmerClose,
-                            true
-                        );
-                        dimmer.removeEventListener(
-                            "touchend",
-                            handleDimmerClose
-                        );
-                    },
-                };
-            })();
-
-            function openPopup() {
-                const popup = document.querySelector(".popup");
-                const dimmer = document.querySelector(".dimmer");
-
-                popup.classList.add("show");
-                dimmer.style.display = "block";
+                savedScrollY = window.scrollY;
                 document.body.classList.add("no-scroll");
 
-                PopupTouchHelper.attach(); // 모바일 대응 attach
+                // 외부 스크롤 차단
+                document.addEventListener("touchmove", preventOuterScroll, {
+                    passive: false,
+                });
+
+                // 팝업 표시
+                dimmer.classList.add("active");
+                if (type === "bottom") {
+                    bottomPopup.classList.add("active");
+                    currentPopupElement = bottomPopup;
+                } else {
+                    modalPopup.classList.add("active");
+                    currentPopupElement = modalPopup;
+                }
+
+                // 내부 터치 이벤트 연결
+                const bodyEl = currentPopupElement.querySelector(".popup-body");
+                bodyEl.addEventListener("touchstart", onPopupTouchStart, {
+                    passive: false,
+                });
+                bodyEl.addEventListener("touchmove", onPopupTouchMove, {
+                    passive: false,
+                });
+
+                // 닫기 이벤트
+                dimmer.addEventListener("click", onDimmerClose, true);
+                dimmer.addEventListener("touchend", onDimmerClose, {
+                    passive: true,
+                });
             }
 
+            /* 팝업 닫기 */
             function closePopup() {
-                const popup = document.querySelector(".popup");
-                const dimmer = document.querySelector(".dimmer");
+                if (!currentPopupElement) return;
 
-                popup.classList.remove("show");
-                dimmer.style.display = "none";
+                const popup = currentPopupElement;
+                popup.classList.remove("active");
+                dimmer.classList.remove("active");
+
+                // 스크롤 복원
                 document.body.classList.remove("no-scroll");
+                window.scrollTo(0, savedScrollY);
 
-                PopupTouchHelper.detach(); // 이벤트 해제
+                // 이벤트 정리
+                document.removeEventListener("touchmove", preventOuterScroll);
+                dimmer.removeEventListener("click", onDimmerClose, true);
+                dimmer.removeEventListener("touchend", onDimmerClose);
+
+                const bodyEl = popup.querySelector(".popup-body");
+                bodyEl.removeEventListener("touchstart", onPopupTouchStart);
+                bodyEl.removeEventListener("touchmove", onPopupTouchMove);
+
+                currentPopupElement = null;
             }
-
-            document
-                .getElementById("openBtn")
-                .addEventListener("click", openPopup);
-            document
-                .getElementById("closeBtn")
-                .addEventListener("click", closePopup);
         </script>
     </body>
 </html>
