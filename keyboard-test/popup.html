@@ -259,22 +259,41 @@
                 const layoutHeight = window.innerHeight;
                 const keyboardHeight = layoutHeight - vv.height - vv.offsetTop;
 
-                if (isBottom) {
-                    // 하단 슬라이드: 상단 최소 120px 확보 + 키보드 위로 이동
-                    const top = Math.max(POPUP_MARGIN, vv.offsetTop);
-                    const maxHeight = vv.height - (top - vv.offsetTop);
-                    currentPopupElement.style.top = `${top}px`;
-                    currentPopupElement.style.bottom = "auto";
-                    currentPopupElement.style.maxHeight = `${maxHeight}px`;
-                    currentPopupElement.style.transform = "translateY(0)";
+                // 키보드가 올라온 경우에만 위치 보정
+                if (keyboardHeight > 0) {
+                    if (isBottom) {
+                        // 하단 슬라이드: 상단 최소 120px 확보
+                        const top = Math.max(
+                            BOTTOM_POPUP_MARGIN_TOP,
+                            vv.offsetTop
+                        );
+                        const maxHeight = vv.height - (top - vv.offsetTop);
+                        currentPopupElement.style.top = `${top}px`;
+                        currentPopupElement.style.bottom = "auto";
+                        currentPopupElement.style.maxHeight = `${maxHeight}px`;
+                        currentPopupElement.style.transform = "translateY(0)";
+                    } else {
+                        // 모달: 화면 중앙, 상/하 여백 확보
+                        const maxHeight = vv.height - MODAL_POPUP_MARGIN * 2;
+                        const top = vv.offsetTop + vv.height / 2;
+                        currentPopupElement.style.maxHeight = `${maxHeight}px`;
+                        currentPopupElement.style.top = `${top}px`;
+                        currentPopupElement.style.transform =
+                            "translate(-50%, -50%)";
+                    }
                 } else {
-                    // 모달: 화면 중앙, 상/하 120px 여백 확보
-                    const maxHeight = vv.height - POPUP_MARGIN;
-                    const top = vv.offsetTop + vv.height / 2;
-                    currentPopupElement.style.maxHeight = `${maxHeight}px`;
-                    currentPopupElement.style.top = `${top}px`;
-                    currentPopupElement.style.transform =
-                        "translate(-50%, -50%)";
+                    // 키보드가 없는 경우: 기본 위치로 복원
+                    if (isBottom) {
+                        currentPopupElement.style.top = "auto";
+                        currentPopupElement.style.bottom = "0";
+                        currentPopupElement.style.maxHeight = "";
+                        currentPopupElement.style.transform = "";
+                    } else {
+                        currentPopupElement.style.top = "50%";
+                        currentPopupElement.style.maxHeight = "";
+                        currentPopupElement.style.transform =
+                            "translate(-50%, -50%)";
+                    }
                 }
             }
 
