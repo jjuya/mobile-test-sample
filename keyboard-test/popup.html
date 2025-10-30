@@ -3,12 +3,12 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Mobile Popup - Final Stable Version (Fixed)</title>
+        <title>Popup/Modal Keyboard 완전 대응</title>
         <style>
             body {
                 margin: 0;
                 font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
-                background-color: #f0f2f5;
+                background: #f0f2f5;
                 color: #333;
                 height: 200vh;
                 padding-bottom: 20px;
@@ -23,17 +23,16 @@
             .content {
                 padding: 20px;
             }
-
             button {
                 padding: 10px 15px;
                 border: none;
                 border-radius: 8px;
-                background-color: #007bff;
-                color: white;
+                background: #007bff;
+                color: #fff;
                 font-size: 16px;
                 cursor: pointer;
-                transition: background-color 0.2s;
                 margin-right: 10px;
+                transition: background 0.2s;
             }
 
             .dimmer {
@@ -42,7 +41,7 @@
                 left: 0;
                 width: 100%;
                 height: 100%;
-                background-color: rgba(0, 0, 0, 0.5);
+                background: rgba(0, 0, 0, 0.5);
                 backdrop-filter: blur(3px);
                 -webkit-backdrop-filter: blur(3px);
                 visibility: hidden;
@@ -71,7 +70,6 @@
             .popup.active {
                 visibility: visible;
             }
-
             .popup-header {
                 padding: 18px 20px;
                 background: #f8f9fa;
@@ -80,14 +78,12 @@
                 font-weight: bold;
                 flex-shrink: 0;
             }
-
             .popup-body {
                 padding: 20px;
                 overflow-y: auto;
                 flex-grow: 1;
                 -webkit-overflow-scrolling: touch;
             }
-
             .popup-footer {
                 padding: 15px 20px;
                 border-top: 1px solid #eee;
@@ -95,7 +91,6 @@
                 background: white;
                 flex-shrink: 0;
             }
-
             input[type="text"] {
                 width: 100%;
                 padding: 12px;
@@ -105,7 +100,6 @@
                 border-radius: 8px;
             }
 
-            /* 하단 팝업 */
             .bottom-slide-popup {
                 bottom: 0;
                 left: 0;
@@ -118,8 +112,6 @@
             .bottom-slide-popup.active {
                 transform: translateY(0);
             }
-
-            /* 모달 팝업 */
             .modal-popup {
                 top: 50%;
                 left: 50%;
@@ -135,13 +127,11 @@
             }
         </style>
     </head>
-
     <body>
         <div class="content">
-            <h1>✨ 팝업/모달 키보드 대응 개선</h1>
+            <h1>✨ 팝업/모달 키보드 완전 대응</h1>
             <button onclick="openPopup('bottom')">하단 팝업 열기</button>
             <button onclick="openPopup('modal')">모달 팝업 열기</button>
-
             <input
                 type="text"
                 placeholder="일반 입력 테스트"
@@ -156,12 +146,6 @@
             <div class="popup-body">
                 <input type="text" placeholder="입력 테스트 (키보드 유도)" />
                 <p>스크롤 테스트용 내용...</p>
-                <p>...</p>
-                <p>...</p>
-                <p>...</p>
-                <p>...</p>
-                <p>...</p>
-                <p>...</p>
                 <p>...</p>
                 <p>...</p>
                 <p>...</p>
@@ -181,12 +165,6 @@
                 <p>...</p>
                 <p>...</p>
                 <p>...</p>
-                <p>...</p>
-                <p>...</p>
-                <p>...</p>
-                <p>...</p>
-                <p>...</p>
-                <p>...</p>
             </div>
             <div class="popup-footer">
                 <button onclick="closePopup()">닫기</button>
@@ -194,8 +172,6 @@
         </div>
 
         <script>
-            const POPUP_MARGIN = 120; // 최소 여백
-
             const dimmer = document.getElementById("app-dimmer");
             const bottomPopup = document.getElementById("bottom-slide-popup");
             const modalPopup = document.getElementById("modal-popup");
@@ -204,49 +180,43 @@
             let savedScrollY = 0;
             let lastTouchY = 0;
 
+            const BOTTOM_POPUP_MARGIN_TOP = 120;
+            const MODAL_POPUP_MARGIN = 60;
+
             /* ---------------------- */
-            /* 스크롤/키보드 처리 */
-            /* ---------------------- */
+            /* 스크롤/터치 처리 */
             function preventOuterScroll(e) {
                 if (!e.target.closest(".popup-body")) e.preventDefault();
             }
-
             function onPopupTouchStart(e) {
                 lastTouchY = e.touches[0].clientY;
             }
-
             function onPopupTouchMove(e) {
                 const scrollable = e.currentTarget;
                 const currentY = e.touches[0].clientY;
                 const deltaY = currentY - lastTouchY;
-
                 const active = document.activeElement;
                 if (active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName))
-                    active.blur();
-
+                    active.blur(); // 스크롤 시 input blur
                 if (
                     (scrollable.scrollTop === 0 && deltaY > 0) ||
                     (scrollable.scrollTop + scrollable.clientHeight >=
                         scrollable.scrollHeight &&
                         deltaY < 0)
-                ) {
+                )
                     e.preventDefault();
-                }
-
                 lastTouchY = currentY;
             }
 
             /* ---------------------- */
-            /* 딤 클릭 / 모바일 대응 */
-            /* ---------------------- */
+            /* 딤 클릭 처리 */
             function onDimmerClose(e) {
-                const insidePopup = e.target.closest(".popup");
-                if (!insidePopup && currentPopupElement) closePopup();
+                if (!e.target.closest(".popup") && currentPopupElement)
+                    closePopup();
             }
 
             /* ---------------------- */
-            /* 키보드 대응 (visualViewport) */
-            /* ---------------------- */
+            /* 키보드/위치 보정 */
             function adjustPopupForKeyboard() {
                 if (!currentPopupElement) return;
                 const vv = window.visualViewport;
@@ -257,12 +227,13 @@
                         "bottom-slide-popup"
                     );
                 const layoutHeight = window.innerHeight;
-                const keyboardHeight = layoutHeight - vv.height - vv.offsetTop;
+                const keyboardHeight = Math.max(
+                    0,
+                    layoutHeight - vv.height - vv.offsetTop
+                );
 
-                // 키보드가 올라온 경우에만 위치 보정
                 if (keyboardHeight > 0) {
                     if (isBottom) {
-                        // 하단 슬라이드: 상단 최소 120px 확보
                         const top = Math.max(
                             BOTTOM_POPUP_MARGIN_TOP,
                             vv.offsetTop
@@ -273,16 +244,14 @@
                         currentPopupElement.style.maxHeight = `${maxHeight}px`;
                         currentPopupElement.style.transform = "translateY(0)";
                     } else {
-                        // 모달: 화면 중앙, 상/하 여백 확보
                         const maxHeight = vv.height - MODAL_POPUP_MARGIN * 2;
                         const top = vv.offsetTop + vv.height / 2;
                         currentPopupElement.style.maxHeight = `${maxHeight}px`;
                         currentPopupElement.style.top = `${top}px`;
                         currentPopupElement.style.transform =
-                            "translate(-50%, -50%)";
+                            "translate(-50%,-50%)";
                     }
                 } else {
-                    // 키보드가 없는 경우: 기본 위치로 복원
                     if (isBottom) {
                         currentPopupElement.style.top = "auto";
                         currentPopupElement.style.bottom = "0";
@@ -292,26 +261,15 @@
                         currentPopupElement.style.top = "50%";
                         currentPopupElement.style.maxHeight = "";
                         currentPopupElement.style.transform =
-                            "translate(-50%, -50%)";
+                            "translate(-50%,-50%)";
                     }
                 }
             }
 
-            window.visualViewport?.addEventListener(
-                "resize",
-                adjustPopupForKeyboard
-            );
-            window.visualViewport?.addEventListener(
-                "scroll",
-                adjustPopupForKeyboard
-            );
-
             /* ---------------------- */
-            /* 팝업 열기 / 닫기 */
-            /* ---------------------- */
+            /* 팝업 열기 */
             function openPopup(type) {
                 if (currentPopupElement) return;
-
                 savedScrollY = window.scrollY;
                 document.body.classList.add("no-scroll");
                 document.addEventListener("touchmove", preventOuterScroll, {
@@ -319,13 +277,9 @@
                 });
 
                 dimmer.classList.add("active");
-                if (type === "bottom") {
-                    bottomPopup.classList.add("active");
-                    currentPopupElement = bottomPopup;
-                } else {
-                    modalPopup.classList.add("active");
-                    currentPopupElement = modalPopup;
-                }
+                currentPopupElement =
+                    type === "bottom" ? bottomPopup : modalPopup;
+                currentPopupElement.classList.add("active");
 
                 const bodyEl = currentPopupElement.querySelector(".popup-body");
                 bodyEl.addEventListener("touchstart", onPopupTouchStart, {
@@ -340,13 +294,22 @@
                     passive: true,
                 });
 
-                adjustPopupForKeyboard(); // 팝업 열릴 때 위치 보정
+                // input focus/blur 이벤트
+                const inputs =
+                    currentPopupElement.querySelectorAll("input,textarea");
+                inputs.forEach((input) => {
+                    input.addEventListener("focus", adjustPopupForKeyboard);
+                    input.addEventListener("blur", adjustPopupForKeyboard);
+                });
+
+                adjustPopupForKeyboard();
             }
 
+            /* ---------------------- */
+            /* 팝업 닫기 */
             function closePopup() {
                 if (!currentPopupElement) return;
                 const popup = currentPopupElement;
-
                 popup.classList.remove("active");
                 dimmer.classList.remove("active");
 
@@ -360,16 +323,27 @@
                 bodyEl.removeEventListener("touchstart", onPopupTouchStart);
                 bodyEl.removeEventListener("touchmove", onPopupTouchMove);
 
-                // 원래 위치 복원
-                if (popup.classList.contains("bottom-slide-popup")) {
-                    popup.style.bottom = "0";
-                } else {
-                    popup.style.top = "50%";
-                    popup.style.transform = "translate(-50%,-50%)";
-                }
+                const inputs = popup.querySelectorAll("input,textarea");
+                inputs.forEach((input) => {
+                    input.removeEventListener("focus", adjustPopupForKeyboard);
+                    input.removeEventListener("blur", adjustPopupForKeyboard);
+                });
 
                 currentPopupElement = null;
             }
+
+            /* ---------------------- */
+            /* VisualViewport 이벤트 */
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener(
+                    "resize",
+                    adjustPopupForKeyboard
+                );
+                window.visualViewport.addEventListener(
+                    "scroll",
+                    adjustPopupForKeyboard
+                );
+            } else console.warn("VisualViewport 지원 안됨");
         </script>
     </body>
 </html>
