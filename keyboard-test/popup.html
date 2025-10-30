@@ -194,6 +194,8 @@
         </div>
 
         <script>
+            const POPUP_MARGIN = 120; // 최소 여백
+
             const dimmer = document.getElementById("app-dimmer");
             const bottomPopup = document.getElementById("bottom-slide-popup");
             const modalPopup = document.getElementById("modal-popup");
@@ -254,22 +256,25 @@
                     currentPopupElement.classList.contains(
                         "bottom-slide-popup"
                     );
-                const keyboardHeight =
-                    window.innerHeight - vv.height - vv.offsetTop;
+                const layoutHeight = window.innerHeight;
+                const keyboardHeight = layoutHeight - vv.height - vv.offsetTop;
 
                 if (isBottom) {
-                    currentPopupElement.style.bottom =
-                        keyboardHeight > 0 ? `${keyboardHeight}px` : "0";
+                    // 하단 슬라이드: 상단 최소 120px 확보 + 키보드 위로 이동
+                    const top = Math.max(POPUP_MARGIN, vv.offsetTop);
+                    const maxHeight = vv.height - (top - vv.offsetTop);
+                    currentPopupElement.style.top = `${top}px`;
+                    currentPopupElement.style.bottom = "auto";
+                    currentPopupElement.style.maxHeight = `${maxHeight}px`;
+                    currentPopupElement.style.transform = "translateY(0)";
                 } else {
-                    const top =
-                        keyboardHeight > 0
-                            ? vv.offsetTop + keyboardHeight / 2
-                            : window.innerHeight / 2;
+                    // 모달: 화면 중앙, 상/하 120px 여백 확보
+                    const maxHeight = vv.height - POPUP_MARGIN * 2;
+                    const top = vv.offsetTop + vv.height / 2;
+                    currentPopupElement.style.maxHeight = `${maxHeight}px`;
                     currentPopupElement.style.top = `${top}px`;
                     currentPopupElement.style.transform =
-                        keyboardHeight > 0
-                            ? "translateX(-50%)"
-                            : "translate(-50%,-50%)";
+                        "translate(-50%, -50%)";
                 }
             }
 
