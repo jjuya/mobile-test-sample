@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>iframe 모던 UI + 클래스 기반 rAF scroll</title>
+        <title>iframe 모던 UI + focus input rAF scroll</title>
         <style>
             @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap");
 
@@ -192,22 +192,11 @@
 
         <script>
             class InputScrollManager {
-                constructor(inputs, popup) {
-                    this.inputs = Array.from(inputs);
+                constructor(popup) {
                     this.popup = popup;
                     this.currentInput = null;
                     this.rAFId = null;
                     this.inputValues = {};
-
-                    this.inputs.forEach((input) => {
-                        input.addEventListener("focus", () =>
-                            this.onFocus(input)
-                        );
-                        input.addEventListener("blur", () => this.onBlur());
-                        input.addEventListener("input", () =>
-                            this.onInput(input)
-                        );
-                    });
 
                     if (window.visualViewport) {
                         window.visualViewport.addEventListener("resize", () =>
@@ -219,7 +208,7 @@
                     }
                 }
 
-                onFocus(input) {
+                focusInput(input) {
                     this.currentInput = input;
                     if (this.rAFId) cancelAnimationFrame(this.rAFId);
 
@@ -232,12 +221,12 @@
                     this.rAFId = requestAnimationFrame(loop);
                 }
 
-                onBlur() {
+                blurInput() {
                     this.currentInput = null;
                     if (this.rAFId) cancelAnimationFrame(this.rAFId);
                 }
 
-                onInput(input) {
+                inputEvent(input) {
                     if (input.type === "tel")
                         input.value = input.value.replace(/[^\d-]/g, "");
                     this.inputValues[input.id] = input.value;
@@ -274,8 +263,18 @@
 
             // 초기화
             const popupEl = document.getElementById("popup");
-            const inputs = document.querySelectorAll("input");
-            const manager = new InputScrollManager(inputs, popupEl);
+            const manager = new InputScrollManager(popupEl);
+
+            // 모든 input focus/blur 이벤트 연결
+            document.querySelectorAll("input").forEach((input) => {
+                input.addEventListener("focus", () =>
+                    manager.focusInput(input)
+                );
+                input.addEventListener("blur", () => manager.blurInput());
+                input.addEventListener("input", () =>
+                    manager.inputEvent(input)
+                );
+            });
 
             // 팝업 열기/닫기
             const popupBg = document.getElementById("popupBg");
