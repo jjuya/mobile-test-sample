@@ -3,10 +3,9 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>iframe 모던 UI + focus input rAF scroll</title>
+        <title>iframe 모던 UI + visualViewport scroll</title>
         <style>
             @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap");
-
             html,
             body {
                 margin: 0;
@@ -18,7 +17,6 @@
                 align-items: center;
                 min-height: 100vh;
             }
-
             .container {
                 width: 90%;
                 max-width: 480px;
@@ -27,7 +25,6 @@
                 flex-direction: column;
                 gap: 24px;
             }
-
             .input-group {
                 display: flex;
                 flex-direction: column;
@@ -42,7 +39,7 @@
                 font-size: 16px;
                 border-radius: 12px;
                 border: 1px solid #d1d5db;
-                background: #ffffff;
+                background: #fff;
                 box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
                 outline: none;
                 transition: all 0.2s ease;
@@ -51,7 +48,6 @@
                 border-color: #3b82f6;
                 box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
             }
-
             button {
                 padding: 14px;
                 font-size: 16px;
@@ -59,14 +55,13 @@
                 border: none;
                 cursor: pointer;
                 background: #3b82f6;
-                color: white;
+                color: #fff;
                 font-weight: 500;
                 transition: all 0.2s ease;
             }
             button:hover {
                 background: #2563eb;
             }
-
             .popup-bg {
                 position: fixed;
                 top: 0;
@@ -83,7 +78,6 @@
                 opacity: 1;
                 pointer-events: all;
             }
-
             .popup {
                 position: fixed;
                 left: 50%;
@@ -92,7 +86,7 @@
                 width: 90%;
                 max-width: 480px;
                 height: 360px;
-                background: #ffffff;
+                background: #fff;
                 border-radius: 20px 20px 0 0;
                 box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
                 display: flex;
@@ -106,7 +100,6 @@
             .popup.active {
                 bottom: 0;
             }
-
             .popup h4 {
                 margin: 0;
                 color: #111827;
@@ -120,7 +113,6 @@
                 <label for="name">이름</label>
                 <input id="name" type="text" placeholder="홍길동" />
             </div>
-
             <div class="input-group">
                 <label for="email">이메일</label>
                 <input
@@ -129,7 +121,6 @@
                     placeholder="example@gmail.com"
                 />
             </div>
-
             <div class="input-group">
                 <label for="phone">전화번호</label>
                 <input
@@ -139,7 +130,6 @@
                     inputmode="numeric"
                 />
             </div>
-
             <div class="input-group">
                 <label for="address">주소</label>
                 <input
@@ -148,15 +138,12 @@
                     placeholder="서울시 강남구 ..."
                 />
             </div>
-
             <button id="openPopup">하단 팝업 열기</button>
         </div>
 
         <div class="popup-bg" id="popupBg"></div>
-
         <div class="popup" id="popup">
             <h4>📋 팝업 내부</h4>
-
             <div class="input-group">
                 <label for="popup1">팝업 이름</label>
                 <input id="popup1" type="text" placeholder="홍길동" />
@@ -186,7 +173,6 @@
                     placeholder="서울시 강남구 ..."
                 />
             </div>
-
             <button id="closePopup">닫기</button>
         </div>
 
@@ -217,7 +203,6 @@
                         this.adjustScroll(this.currentInput);
                         this.rAFId = requestAnimationFrame(loop);
                     };
-
                     this.rAFId = requestAnimationFrame(loop);
                 }
 
@@ -238,9 +223,12 @@
 
                 adjustScroll(targetInput) {
                     const rect = targetInput.getBoundingClientRect();
-                    const viewportHeight = window.visualViewport
-                        ? window.visualViewport.height
-                        : window.innerHeight;
+                    const viewport = window.visualViewport || {
+                        height: window.innerHeight,
+                        offsetTop: 0,
+                        pageTop: 0,
+                    };
+                    const viewportHeight = viewport.height;
                     const isInPopup = this.popup.contains(targetInput);
 
                     if (isInPopup) {
@@ -253,7 +241,9 @@
                             behavior: "smooth",
                         });
                     } else {
-                        const offsetTop = rect.top + window.scrollY;
+                        // visualViewport 기준 scroll
+                        const offsetTop =
+                            rect.top + viewport.offsetTop + viewport.pageTop;
                         const targetY =
                             offsetTop - viewportHeight / 2 + rect.height;
                         window.scrollTo({ top: targetY, behavior: "smooth" });
@@ -265,7 +255,6 @@
             const popupEl = document.getElementById("popup");
             const manager = new InputScrollManager(popupEl);
 
-            // 모든 input focus/blur 이벤트 연결
             document.querySelectorAll("input").forEach((input) => {
                 input.addEventListener("focus", () =>
                     manager.focusInput(input)
