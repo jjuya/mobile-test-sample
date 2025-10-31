@@ -3,48 +3,111 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>iframe 내부</title>
+        <title>iframe 모던 UI + 입력 저장</title>
         <style>
+            @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap");
+
             html,
             body {
                 margin: 0;
                 padding: 0;
-                height: 1200px;
-                background: linear-gradient(to bottom, #bbdefb, #90caf9);
-                font-family: sans-serif;
+                font-family: "Inter", sans-serif;
+                background: #f4f6f8;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                min-height: 100vh;
             }
 
             .container {
-                padding: 30px 20px;
+                width: 90%;
+                max-width: 480px;
+                margin-top: 40px;
                 display: flex;
                 flex-direction: column;
-                gap: 80px;
+                gap: 24px;
             }
 
-            input {
+            h3 {
+                text-align: center;
+                color: #1f2937;
+                font-weight: 500;
+            }
+
+            /* 모던 input 스타일 */
+            .input-group {
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+            }
+            .input-group label {
+                font-size: 14px;
+                color: #6b7280; /* hint 색상 */
+            }
+            .input-group input {
+                padding: 14px 16px;
+                font-size: 16px;
+                border-radius: 12px;
+                border: 1px solid #d1d5db;
+                background: #ffffff;
+                box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+                outline: none;
+                transition: all 0.2s ease;
+            }
+            .input-group input:focus {
+                border-color: #3b82f6;
+                box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+            }
+
+            button {
+                padding: 14px;
+                font-size: 16px;
+                border-radius: 12px;
+                border: none;
+                cursor: pointer;
+                background: #3b82f6;
+                color: white;
+                font-weight: 500;
+                transition: all 0.2s ease;
+            }
+            button:hover {
+                background: #2563eb;
+            }
+
+            /* 팝업 배경 */
+            .popup-bg {
+                position: fixed;
+                top: 0;
+                left: 0;
                 width: 100%;
-                padding: 12px;
-                font-size: 18px;
-                border: 2px solid #1e88e5;
-                border-radius: 8px;
-                box-sizing: border-box;
+                height: 100%;
+                background: rgba(31, 41, 55, 0.25);
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.3s ease;
+                z-index: 998;
+            }
+            .popup-bg.active {
+                opacity: 1;
+                pointer-events: all;
             }
 
-            /* 하단 슬라이드 팝업 */
+            /* 슬라이드업 팝업 */
             .popup {
                 position: fixed;
-                left: 0;
+                left: 50%;
                 bottom: -100%;
-                width: 100%;
-                height: 300px;
-                background: white;
-                box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.2);
-                border-top-left-radius: 16px;
-                border-top-right-radius: 16px;
+                transform: translateX(-50%);
+                width: 90%;
+                max-width: 480px;
+                height: 360px;
+                background: #ffffff;
+                border-radius: 20px 20px 0 0;
+                box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
                 display: flex;
                 flex-direction: column;
-                padding: 20px;
-                gap: 20px;
+                padding: 24px;
+                gap: 16px;
                 transition: bottom 0.3s ease;
                 overflow-y: auto;
                 z-index: 999;
@@ -52,56 +115,142 @@
             .popup.active {
                 bottom: 0;
             }
-            .popup button {
-                background: #2196f3;
-                color: white;
-                border: none;
-                padding: 10px;
-                border-radius: 6px;
-                font-size: 16px;
+
+            .popup h4 {
+                margin: 0;
+                color: #111827;
+                font-weight: 500;
             }
         </style>
     </head>
     <body>
         <div class="container">
-            <h3>iframe 내부 input 리스트</h3>
-            <input type="text" placeholder="이름 입력" />
-            <input type="text" placeholder="이메일 입력" />
-            <input type="text" placeholder="전화번호 입력" />
-            <input type="text" placeholder="주소 입력" />
-            <button id="openPopup">팝업 열기</button>
+            <h3>📱 모던 input 테스트</h3>
+
+            <div class="input-group">
+                <label for="name">이름</label>
+                <input id="name" type="text" placeholder="홍길동" />
+            </div>
+
+            <div class="input-group">
+                <label for="email">이메일</label>
+                <input
+                    id="email"
+                    type="email"
+                    placeholder="example@gmail.com"
+                />
+            </div>
+
+            <div class="input-group">
+                <label for="phone">전화번호</label>
+                <input
+                    id="phone"
+                    type="tel"
+                    placeholder="010-1234-5678"
+                    inputmode="numeric"
+                />
+            </div>
+
+            <div class="input-group">
+                <label for="address">주소</label>
+                <input
+                    id="address"
+                    type="text"
+                    placeholder="서울시 강남구 ..."
+                />
+            </div>
+
+            <button id="openPopup">하단 팝업 열기</button>
         </div>
 
-        <!-- 하단 슬라이드 팝업 -->
-        <div id="popup" class="popup">
+        <!-- 팝업 배경 -->
+        <div class="popup-bg" id="popupBg"></div>
+
+        <!-- 슬라이드업 팝업 -->
+        <div class="popup" id="popup">
             <h4>📋 팝업 내부</h4>
-            <input type="text" placeholder="팝업 입력 1" />
-            <input type="text" placeholder="팝업 입력 2" />
-            <input type="text" placeholder="팝업 입력 3" />
+
+            <div class="input-group">
+                <label for="popup1">팝업 이름</label>
+                <input id="popup1" type="text" placeholder="홍길동" />
+            </div>
+
+            <div class="input-group">
+                <label for="popup2">팝업 이메일</label>
+                <input
+                    id="popup2"
+                    type="email"
+                    placeholder="example@gmail.com"
+                />
+            </div>
+
+            <div class="input-group">
+                <label for="popup3">팝업 전화번호</label>
+                <input
+                    id="popup3"
+                    type="tel"
+                    placeholder="010-1234-5678"
+                    inputmode="numeric"
+                />
+            </div>
+
+            <div class="input-group">
+                <label for="popup4">팝업 주소</label>
+                <input
+                    id="popup4"
+                    type="text"
+                    placeholder="서울시 강남구 ..."
+                />
+            </div>
+
             <button id="closePopup">닫기</button>
         </div>
 
         <script>
             const popup = document.getElementById("popup");
+            const popupBg = document.getElementById("popupBg");
             const btnOpen = document.getElementById("openPopup");
             const btnClose = document.getElementById("closePopup");
             const inputs = document.querySelectorAll("input");
             let currentInput = null;
 
-            btnOpen.addEventListener("click", () =>
-                popup.classList.add("active")
-            );
-            btnClose.addEventListener("click", () =>
-                popup.classList.remove("active")
-            );
+            // 입력값 저장 객체
+            const inputValues = {};
 
+            // 팝업 열기/닫기
+            btnOpen.addEventListener("click", () => {
+                popup.classList.add("active");
+                popupBg.classList.add("active");
+            });
+            btnClose.addEventListener("click", closePopup);
+            popupBg.addEventListener("click", closePopup);
+
+            function closePopup() {
+                popup.classList.remove("active");
+                popupBg.classList.remove("active");
+            }
+
+            // input focus 이벤트
             inputs.forEach((input) => {
                 input.addEventListener("focus", () => {
                     currentInput = input;
                     setTimeout(adjustScroll, isIOS() ? 150 : 0);
                 });
+
+                // 숫자 입력 제한 & 저장
+                input.addEventListener("input", () => {
+                    if (input.type === "tel") {
+                        let value = input.value.replace(/[^\d-]/g, "");
+                        input.value = value;
+                        inputValues[input.id] = value;
+                    } else {
+                        inputValues[input.id] = input.value;
+                    }
+                    console.log(inputValues); // 입력값 확인
+                });
             });
 
+            // visualViewport 감지
             if (window.visualViewport) {
                 window.visualViewport.addEventListener(
                     "resize",
@@ -113,7 +262,6 @@
                 );
             }
 
-            /** 키보드 열림/닫힘 감지 */
             function handleKeyboardResize() {
                 const viewport = window.visualViewport;
                 const offset = viewport.offsetTop;
@@ -121,10 +269,8 @@
                     window.innerHeight - viewport.height - offset;
 
                 if (keyboardHeight > 0) {
-                    // 키보드가 열린 상태 → 팝업을 위로 띄움
                     popup.style.bottom = `${keyboardHeight}px`;
                 } else {
-                    // 키보드 닫힘 → 원래 위치로 복귀
                     popup.style.bottom = popup.classList.contains("active")
                         ? "0"
                         : "-100%";
@@ -133,7 +279,7 @@
                 if (currentInput) adjustScroll();
             }
 
-            /** 현재 input 위치로 스크롤 */
+            // 현재 input 위치로 스크롤
             function adjustScroll() {
                 if (!currentInput) return;
                 const rect = currentInput.getBoundingClientRect();
@@ -152,7 +298,6 @@
                 }
             }
 
-            /** iOS 감지 */
             function isIOS() {
                 return /iPhone|iPad|iPod/i.test(navigator.userAgent);
             }
