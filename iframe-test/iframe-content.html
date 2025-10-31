@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>iframe 모던 UI + 입력 저장</title>
+        <title>iframe input test</title>
         <style>
             @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap");
 
@@ -28,13 +28,6 @@
                 gap: 24px;
             }
 
-            h3 {
-                text-align: center;
-                color: #1f2937;
-                font-weight: 500;
-            }
-
-            /* 모던 input 스타일 */
             .input-group {
                 display: flex;
                 flex-direction: column;
@@ -42,7 +35,7 @@
             }
             .input-group label {
                 font-size: 14px;
-                color: #6b7280; /* hint 색상 */
+                color: #6b7280;
             }
             .input-group input {
                 padding: 14px 16px;
@@ -74,7 +67,6 @@
                 background: #2563eb;
             }
 
-            /* 팝업 배경 */
             .popup-bg {
                 position: fixed;
                 top: 0;
@@ -92,7 +84,6 @@
                 pointer-events: all;
             }
 
-            /* 슬라이드업 팝업 */
             .popup {
                 position: fixed;
                 left: 50%;
@@ -125,8 +116,6 @@
     </head>
     <body>
         <div class="container">
-            <h3>📱 모던 input 테스트</h3>
-
             <div class="input-group">
                 <label for="name">이름</label>
                 <input id="name" type="text" placeholder="홍길동" />
@@ -163,10 +152,8 @@
             <button id="openPopup">하단 팝업 열기</button>
         </div>
 
-        <!-- 팝업 배경 -->
         <div class="popup-bg" id="popupBg"></div>
 
-        <!-- 슬라이드업 팝업 -->
         <div class="popup" id="popup">
             <h4>📋 팝업 내부</h4>
 
@@ -174,7 +161,6 @@
                 <label for="popup1">팝업 이름</label>
                 <input id="popup1" type="text" placeholder="홍길동" />
             </div>
-
             <div class="input-group">
                 <label for="popup2">팝업 이메일</label>
                 <input
@@ -183,7 +169,6 @@
                     placeholder="example@gmail.com"
                 />
             </div>
-
             <div class="input-group">
                 <label for="popup3">팝업 전화번호</label>
                 <input
@@ -193,7 +178,6 @@
                     inputmode="numeric"
                 />
             </div>
-
             <div class="input-group">
                 <label for="popup4">팝업 주소</label>
                 <input
@@ -213,8 +197,6 @@
             const btnClose = document.getElementById("closePopup");
             const inputs = document.querySelectorAll("input");
             let currentInput = null;
-
-            // 입력값 저장 객체
             const inputValues = {};
 
             // 팝업 열기/닫기
@@ -230,23 +212,23 @@
                 popupBg.classList.remove("active");
             }
 
-            // input focus 이벤트
+            // input 이벤트 처리
             inputs.forEach((input) => {
                 input.addEventListener("focus", () => {
                     currentInput = input;
-                    setTimeout(adjustScroll, isIOS() ? 150 : 0);
+                    setTimeout(adjustScroll, isIOS() ? 150 : 0); // 키보드 올라올 때 보정
                 });
 
-                // 숫자 입력 제한 & 저장
+                input.addEventListener("blur", () => {
+                    currentInput = null;
+                });
+
                 input.addEventListener("input", () => {
                     if (input.type === "tel") {
-                        let value = input.value.replace(/[^\d-]/g, "");
-                        input.value = value;
-                        inputValues[input.id] = value;
-                    } else {
-                        inputValues[input.id] = input.value;
+                        input.value = input.value.replace(/[^\d-]/g, "");
                     }
-                    console.log(inputValues); // 입력값 확인
+                    inputValues[input.id] = input.value;
+                    console.log(inputValues);
                 });
             });
 
@@ -263,23 +245,9 @@
             }
 
             function handleKeyboardResize() {
-                const viewport = window.visualViewport;
-                const offset = viewport.offsetTop;
-                const keyboardHeight =
-                    window.innerHeight - viewport.height - offset;
-
-                if (keyboardHeight > 0) {
-                    popup.style.bottom = `${keyboardHeight}px`;
-                } else {
-                    popup.style.bottom = popup.classList.contains("active")
-                        ? "0"
-                        : "-100%";
-                }
-
                 if (currentInput) adjustScroll();
             }
 
-            // 현재 input 위치로 스크롤
             function adjustScroll() {
                 if (!currentInput) return;
                 const rect = currentInput.getBoundingClientRect();
