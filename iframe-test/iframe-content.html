@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>iframe input test</title>
+        <title>iframe 모던 UI + 키보드 scroll</title>
         <style>
             @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap");
 
@@ -199,6 +199,8 @@
             let currentInput = null;
             const inputValues = {};
 
+            let rAFId = null;
+
             // 팝업 열기/닫기
             btnOpen.addEventListener("click", () => {
                 popup.classList.add("active");
@@ -206,7 +208,6 @@
             });
             btnClose.addEventListener("click", closePopup);
             popupBg.addEventListener("click", closePopup);
-
             function closePopup() {
                 popup.classList.remove("active");
                 popupBg.classList.remove("active");
@@ -216,43 +217,45 @@
             inputs.forEach((input) => {
                 input.addEventListener("focus", () => {
                     currentInput = input;
-                    setTimeout(adjustScroll, isIOS() ? 150 : 0); // 키보드 올라올 때 보정
+                    if (rAFId) cancelAnimationFrame(rAFId);
+
+                    const adjustScrollLoop = () => {
+                        if (!currentInput) return;
+                        adjustScroll(currentInput);
+                        // viewport가 안정될 때까지 다음 프레임에서 재호출
+                        rAFId = requestAnimationFrame(adjustScrollLoop);
+                    };
+
+                    rAFId = requestAnimationFrame(adjustScrollLoop);
                 });
 
                 input.addEventListener("blur", () => {
                     currentInput = null;
+                    if (rAFId) cancelAnimationFrame(rAFId);
                 });
 
                 input.addEventListener("input", () => {
-                    if (input.type === "tel") {
+                    if (input.type === "tel")
                         input.value = input.value.replace(/[^\d-]/g, "");
-                    }
                     inputValues[input.id] = input.value;
-                    console.log(inputValues);
                 });
             });
 
             // visualViewport 감지
             if (window.visualViewport) {
-                window.visualViewport.addEventListener(
-                    "resize",
-                    handleKeyboardResize
-                );
-                window.visualViewport.addEventListener(
-                    "scroll",
-                    handleKeyboardResize
-                );
+                window.visualViewport.addEventListener("resize", () => {
+                    if (currentInput) adjustScroll(currentInput);
+                });
+                window.visualViewport.addEventListener("scroll", () => {
+                    if (currentInput) adjustScroll(currentInput);
+                });
             }
 
-            function handleKeyboardResize() {
-                if (currentInput) adjustScroll();
-            }
-
-            function adjustScroll() {
-                if (!currentInput) return;
-                const rect = currentInput.getBoundingClientRect();
+            function adjustScroll(targetInput) {
+                if (!targetInput) return;
+                const rect = targetInput.getBoundingClientRect();
                 const viewport = window.visualViewport;
-                const isInPopup = popup.contains(currentInput);
+                const isInPopup = popup.contains(targetInput);
 
                 if (isInPopup) {
                     const targetScroll =
