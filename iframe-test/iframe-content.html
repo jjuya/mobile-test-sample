@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>iframe 모던 UI + 안정적 키보드 scroll</title>
+        <title>iframe 모던 UI + 클래스 기반 rAF scroll</title>
         <style>
             @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap");
 
@@ -191,96 +191,108 @@
         </div>
 
         <script>
-            const popup = document.getElementById("popup");
-            const popupBg = document.getElementById("popupBg");
-            const btnOpen = document.getElementById("openPopup");
-            const btnClose = document.getElementById("closePopup");
-            const inputs = document.querySelectorAll("input");
+            class InputScrollManager {
+                constructor(inputs, popup) {
+                    this.inputs = Array.from(inputs);
+                    this.popup = popup;
+                    this.currentInput = null;
+                    this.rAFId = null;
+                    this.inputValues = {};
 
-            const inputValues = {};
-            let currentInput = null;
-            let popupRAFId = null;
+                    this.inputs.forEach((input) => {
+                        input.addEventListener("focus", () =>
+                            this.onFocus(input)
+                        );
+                        input.addEventListener("blur", () => this.onBlur());
+                        input.addEventListener("input", () =>
+                            this.onInput(input)
+                        );
+                    });
 
-            // 팝업 열기/닫기
-            btnOpen.addEventListener("click", () => {
-                popup.classList.add("active");
-                popupBg.classList.add("active");
-            });
-            btnClose.addEventListener("click", closePopup);
-            popupBg.addEventListener("click", closePopup);
-
-            function closePopup() {
-                popup.classList.remove("active");
-                popupBg.classList.remove("active");
-            }
-
-            // input 이벤트 처리
-            inputs.forEach((input) => {
-                input.addEventListener("focus", () => {
-                    currentInput = input;
-
-                    if (popup.contains(input)) {
-                        // popup 내부 input은 rAF loop 사용
-                        if (popupRAFId) cancelAnimationFrame(popupRAFId);
-                        const loop = () => {
-                            if (!currentInput) return;
-                            adjustScroll(currentInput);
-                            popupRAFId = requestAnimationFrame(loop);
-                        };
-                        popupRAFId = requestAnimationFrame(loop);
-                    } else {
-                        // popup 외부 input은 focus 직후 scroll
-                        adjustScroll(input);
+                    if (window.visualViewport) {
+                        window.visualViewport.addEventListener("resize", () =>
+                            this.onViewportChange()
+                        );
+                        window.visualViewport.addEventListener("scroll", () =>
+                            this.onViewportChange()
+                        );
                     }
-                });
+                }
 
-                input.addEventListener("blur", () => {
-                    if (popupRAFId) cancelAnimationFrame(popupRAFId);
-                    currentInput = null;
-                });
+                onFocus(input) {
+                    this.currentInput = input;
+                    if (this.rAFId) cancelAnimationFrame(this.rAFId);
 
-                input.addEventListener("input", () => {
+                    const loop = () => {
+                        if (!this.currentInput) return;
+                        this.adjustScroll(this.currentInput);
+                        this.rAFId = requestAnimationFrame(loop);
+                    };
+
+                    this.rAFId = requestAnimationFrame(loop);
+                }
+
+                onBlur() {
+                    this.currentInput = null;
+                    if (this.rAFId) cancelAnimationFrame(this.rAFId);
+                }
+
+                onInput(input) {
                     if (input.type === "tel")
                         input.value = input.value.replace(/[^\d-]/g, "");
-                    inputValues[input.id] = input.value;
-                });
-            });
+                    this.inputValues[input.id] = input.value;
+                }
 
-            // visualViewport 감지 (popup 외부 input 대응)
-            if (window.visualViewport) {
-                window.visualViewport.addEventListener("resize", () => {
-                    if (currentInput && !popup.contains(currentInput))
-                        adjustScroll(currentInput);
-                });
-                window.visualViewport.addEventListener("scroll", () => {
-                    if (currentInput && !popup.contains(currentInput))
-                        adjustScroll(currentInput);
-                });
-            }
+                onViewportChange() {
+                    if (this.currentInput) this.adjustScroll(this.currentInput);
+                }
 
-            function adjustScroll(targetInput) {
-                if (!targetInput) return;
-                const rect = targetInput.getBoundingClientRect();
-                const viewportHeight = window.visualViewport
-                    ? window.visualViewport.height
-                    : window.innerHeight;
-                const isInPopup = popup.contains(targetInput);
+                adjustScroll(targetInput) {
+                    const rect = targetInput.getBoundingClientRect();
+                    const viewportHeight = window.visualViewport
+                        ? window.visualViewport.height
+                        : window.innerHeight;
+                    const isInPopup = this.popup.contains(targetInput);
 
-                if (isInPopup) {
-                    const targetScroll =
-                        popup.scrollTop + rect.top - viewportHeight / 2;
-                    popup.scrollTo({ top: targetScroll, behavior: "smooth" });
-                } else {
-                    const offsetTop = rect.top + window.scrollY;
-                    const targetY =
-                        offsetTop - viewportHeight / 2 + rect.height;
-                    window.scrollTo({ top: targetY, behavior: "smooth" });
+                    if (isInPopup) {
+                        const targetScroll =
+                            this.popup.scrollTop +
+                            rect.top -
+                            viewportHeight / 2;
+                        this.popup.scrollTo({
+                            top: targetScroll,
+                            behavior: "smooth",
+                        });
+                    } else {
+                        const offsetTop = rect.top + window.scrollY;
+                        const targetY =
+                            offsetTop - viewportHeight / 2 + rect.height;
+                        window.scrollTo({ top: targetY, behavior: "smooth" });
+                    }
                 }
             }
 
-            function isIOS() {
-                return /iPhone|iPad|iPod/i.test(navigator.userAgent);
-            }
+            // 초기화
+            const popupEl = document.getElementById("popup");
+            const inputs = document.querySelectorAll("input");
+            const manager = new InputScrollManager(inputs, popupEl);
+
+            // 팝업 열기/닫기
+            const popupBg = document.getElementById("popupBg");
+            document
+                .getElementById("openPopup")
+                .addEventListener("click", () => {
+                    popupEl.classList.add("active");
+                    popupBg.classList.add("active");
+                });
+            const closePopup = () => {
+                popupEl.classList.remove("active");
+                popupBg.classList.remove("active");
+            };
+            document
+                .getElementById("closePopup")
+                .addEventListener("click", closePopup);
+            popupBg.addEventListener("click", closePopup);
         </script>
     </body>
 </html>
