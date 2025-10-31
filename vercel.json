@@ -1,0 +1,3 @@
+{
+    "routes": [{ "src": "/iframe-test/(.*)", "dest": "/iframe-test/$1" }]
+}
