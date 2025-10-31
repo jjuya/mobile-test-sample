@@ -196,9 +196,10 @@
             const btnOpen = document.getElementById("openPopup");
             const btnClose = document.getElementById("closePopup");
             const inputs = document.querySelectorAll("input");
-            let currentInput = null;
+
             const inputValues = {};
 
+            let currentInput = null;
             let rAFId = null;
 
             // 팝업 열기/닫기
@@ -217,39 +218,47 @@
             inputs.forEach((input) => {
                 input.addEventListener("focus", () => {
                     currentInput = input;
+
                     if (rAFId) cancelAnimationFrame(rAFId);
 
-                    const adjustScrollLoop = () => {
+                    const loop = () => {
                         if (!currentInput) return;
-                        adjustScroll(currentInput);
-                        // viewport가 안정될 때까지 다음 프레임에서 재호출
-                        rAFId = requestAnimationFrame(adjustScrollLoop);
+
+                        // popup 안/밖 구분 없이 scroll 조정
+                        const rect = currentInput.getBoundingClientRect();
+                        const viewportHeight = window.visualViewport
+                            ? window.visualViewport.height
+                            : window.innerHeight;
+                        const isInPopup = popup.contains(currentInput);
+
+                        if (isInPopup) {
+                            const targetScroll =
+                                popup.scrollTop + rect.top - viewportHeight / 2;
+                            popup.scrollTo({
+                                top: targetScroll,
+                                behavior: "smooth",
+                            });
+                        } else {
+                            const offsetTop = rect.top + window.scrollY;
+                            const targetY =
+                                offsetTop - viewportHeight / 2 + rect.height;
+                            window.scrollTo({
+                                top: targetY,
+                                behavior: "smooth",
+                            });
+                        }
+
+                        rAFId = requestAnimationFrame(loop);
                     };
 
-                    rAFId = requestAnimationFrame(adjustScrollLoop);
+                    rAFId = requestAnimationFrame(loop);
                 });
 
                 input.addEventListener("blur", () => {
                     currentInput = null;
                     if (rAFId) cancelAnimationFrame(rAFId);
                 });
-
-                input.addEventListener("input", () => {
-                    if (input.type === "tel")
-                        input.value = input.value.replace(/[^\d-]/g, "");
-                    inputValues[input.id] = input.value;
-                });
             });
-
-            // visualViewport 감지
-            if (window.visualViewport) {
-                window.visualViewport.addEventListener("resize", () => {
-                    if (currentInput) adjustScroll(currentInput);
-                });
-                window.visualViewport.addEventListener("scroll", () => {
-                    if (currentInput) adjustScroll(currentInput);
-                });
-            }
 
             function adjustScroll(targetInput) {
                 if (!targetInput) return;
@@ -267,6 +276,16 @@
                         offsetTop - viewport.height / 2 + rect.height;
                     window.scrollTo({ top: targetY, behavior: "smooth" });
                 }
+            }
+
+            // visualViewport 감지
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener("resize", () => {
+                    if (currentInput) adjustScroll(currentInput);
+                });
+                window.visualViewport.addEventListener("scroll", () => {
+                    if (currentInput) adjustScroll(currentInput);
+                });
             }
 
             function isIOS() {
