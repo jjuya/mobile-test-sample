@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ko">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>iframe 내부</title>
+        <style>
+            html,
+            body {
+                margin: 0;
+                padding: 0;
+                height: 1200px;
+                background: linear-gradient(to bottom, #bbdefb, #90caf9);
+                font-family: sans-serif;
+            }
+
+            .container {
+                padding: 30px 20px;
+                display: flex;
+                flex-direction: column;
+                gap: 80px;
+            }
+
+            input {
+                width: 100%;
+                padding: 12px;
+                font-size: 18px;
+                border: 2px solid #1e88e5;
+                border-radius: 8px;
+                box-sizing: border-box;
+            }
+
+            /* 하단 슬라이드 팝업 */
+            .popup {
+                position: fixed;
+                left: 0;
+                bottom: -100%;
+                width: 100%;
+                height: 300px;
+                background: white;
+                box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.2);
+                border-top-left-radius: 16px;
+                border-top-right-radius: 16px;
+                display: flex;
+                flex-direction: column;
+                padding: 20px;
+                gap: 20px;
+                transition: bottom 0.3s ease;
+                overflow-y: auto;
+                z-index: 999;
+            }
+            .popup.active {
+                bottom: 0;
+            }
+            .popup button {
+                background: #2196f3;
+                color: white;
+                border: none;
+                padding: 10px;
+                border-radius: 6px;
+                font-size: 16px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h3>iframe 내부 input 리스트</h3>
+            <input type="text" placeholder="이름 입력" />
+            <input type="text" placeholder="이메일 입력" />
+            <input type="text" placeholder="전화번호 입력" />
+            <input type="text" placeholder="주소 입력" />
+            <button id="openPopup">팝업 열기</button>
+        </div>
+
+        <!-- 하단 슬라이드 팝업 -->
+        <div id="popup" class="popup">
+            <h4>📋 팝업 내부</h4>
+            <input type="text" placeholder="팝업 입력 1" />
+            <input type="text" placeholder="팝업 입력 2" />
+            <input type="text" placeholder="팝업 입력 3" />
+            <button id="closePopup">닫기</button>
+        </div>
+
+        <script>
+            const popup = document.getElementById("popup");
+            const btnOpen = document.getElementById("openPopup");
+            const btnClose = document.getElementById("closePopup");
+            const inputs = document.querySelectorAll("input");
+            let currentInput = null;
+
+            btnOpen.addEventListener("click", () =>
+                popup.classList.add("active")
+            );
+            btnClose.addEventListener("click", () =>
+                popup.classList.remove("active")
+            );
+
+            inputs.forEach((input) => {
+                input.addEventListener("focus", () => {
+                    currentInput = input;
+                    setTimeout(adjustScroll, isIOS() ? 150 : 0);
+                });
+            });
+
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener(
+                    "resize",
+                    handleKeyboardResize
+                );
+                window.visualViewport.addEventListener(
+                    "scroll",
+                    handleKeyboardResize
+                );
+            }
+
+            /** 키보드 열림/닫힘 감지 */
+            function handleKeyboardResize() {
+                const viewport = window.visualViewport;
+                const offset = viewport.offsetTop;
+                const keyboardHeight =
+                    window.innerHeight - viewport.height - offset;
+
+                if (keyboardHeight > 0) {
+                    // 키보드가 열린 상태 → 팝업을 위로 띄움
+                    popup.style.bottom = `${keyboardHeight}px`;
+                } else {
+                    // 키보드 닫힘 → 원래 위치로 복귀
+                    popup.style.bottom = popup.classList.contains("active")
+                        ? "0"
+                        : "-100%";
+                }
+
+                if (currentInput) adjustScroll();
+            }
+
+            /** 현재 input 위치로 스크롤 */
+            function adjustScroll() {
+                if (!currentInput) return;
+                const rect = currentInput.getBoundingClientRect();
+                const viewport = window.visualViewport;
+                const isInPopup = popup.contains(currentInput);
+
+                if (isInPopup) {
+                    const targetScroll =
+                        popup.scrollTop + rect.top - viewport.height / 2;
+                    popup.scrollTo({ top: targetScroll, behavior: "smooth" });
+                } else {
+                    const offsetTop = rect.top + window.scrollY;
+                    const targetY =
+                        offsetTop - viewport.height / 2 + rect.height;
+                    window.scrollTo({ top: targetY, behavior: "smooth" });
+                }
+            }
+
+            /** iOS 감지 */
+            function isIOS() {
+                return /iPhone|iPad|iPod/i.test(navigator.userAgent);
+            }
+        </script>
+    </body>
+</html>
